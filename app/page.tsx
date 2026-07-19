@@ -103,7 +103,7 @@ export default function HomePage() {
           <article><span>03</span><h3>Protection and condition</h3><p>Interactive relay pages, five bearing RTDs, motor and pump vibration, alarms, trips, targets, and reset logic.</p></article>
           <article><span>04</span><h3>Local and remote control</h3><p>DCS, field-cabinet, and starter authority with operating controls available at the equipment.</p></article>
           <article><span>05</span><h3>Troubleshooting</h3><p>Injectable control, excitation, valve, protection, temperature, and vibration conditions with latched consequences.</p></article>
-          <article><span>06</span><h3>Racking and energy control</h3><p>ArcSafe-style remote racking, a breaker-specific SOP, usable locks/tags, and a gated group LOTO exercise.</p></article>
+          <article><span>06</span><h3>Racking and energy control</h3><p>Generic portable remote racking, a breaker-specific SOP, usable locks/tags, and a gated group LOTO exercise.</p></article>
         </div>
       </section>
 

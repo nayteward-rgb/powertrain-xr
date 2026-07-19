@@ -17,7 +17,7 @@ The project was directed by Naythan Ward, a journeyman electrician and electrica
 ## What judges can try
 
 1. Open the [3D motor floor](https://synchronous-pump-trainer.nayteward.chatgpt.site/motor-floor-vr).
-2. Open **Breakers / RRS-1** and select `52-A1`.
+2. Open **Breakers / Racking** and select `52-A1`.
 3. Trip the breaker, complete the remote-racking checks, and rack it from `CONNECTED` to `TEST` to `DISCONNECTED`.
 4. Apply the simulated yellow isolation lock, hasp, and danger tag.
 5. Attempt to close the breaker or run an automatic transfer and observe the enforced interlock.
@@ -31,7 +31,7 @@ The project was directed by Naythan Ward, a journeyman electrician and electrica
 - Eaton VCP-W-style double-ended 4.8 kV lineup
 - Eight two-high feeder breakers on each bus
 - Main 1–Tie–Main 2 automatic close-transition controls
-- CBS ArcSafe RRS-1-style remote racking workflow
+- Generic portable remote-racking workflow
 - Breaker positions: `CONNECTED`, `TEST`, and `DISCONNECTED`
 - Breaker-specific local control, LOTO hardware, and SOP popups
 - Single-speed 2,500 hp brushed synchronous motor

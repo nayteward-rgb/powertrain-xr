@@ -1751,7 +1751,9 @@ button.vr-icon-button {
   .breaker-sop ol { grid-template-columns: 1fr; }
 }
 
-@media (max-width: 760px) {
+/* Phone controls must also activate when a wide phone is rotated to landscape.
+   Width alone misses common 800–950 px landscape viewports. */
+@media (max-width: 760px), (orientation: landscape) and (max-height: 600px) {
   html,
   body {
     overscroll-behavior: none;
@@ -1857,6 +1859,10 @@ button.vr-icon-button {
     background: rgba(4, 16, 22, .76);
     box-shadow: 0 8px 26px rgba(0, 0, 0, .35);
     backdrop-filter: blur(8px);
+  }
+
+  .walk-mode .mobile-move-pad {
+    bottom: max(10px, env(safe-area-inset-bottom));
   }
 
   .mobile-move-pad.panel-open {

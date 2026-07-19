@@ -410,13 +410,13 @@ function gearBreakerInspection(definition: GearBreakerDefinition): Inspection {
   return {
     eyebrow: "EATON VCP-W TRAINING LINEUP",
     title: `${definition.label} · ${definition.duty}`,
-    description: "An operable drawout vacuum-breaker compartment in the double-ended bus. Open its breaker workstation for local controls, ArcSafe-style remote racking, lockout hardware, and its equipment-specific training SOP.",
+    description: "An operable drawout vacuum-breaker compartment in the double-ended bus. Open its breaker workstation for local controls, portable remote racking, lockout hardware, and its equipment-specific training SOP.",
     rows: [
       ["Location", definition.bus === "CENTER" ? "Main–tie–main center" : `Bus ${definition.bus} · ${definition.deck.toLowerCase()} compartment`],
       ["Breaker", "VCP-W-style drawout vacuum breaker"],
       ["Position", "Connected · test · disconnected"],
       ["Metering", "Protection relay · IQ analyzer"],
-      ["Racking", "CBS ArcSafe RRS-1-style remote console"],
+      ["Racking", "Portable remote racking system"],
       ["LOTO", "Yellow isolation lock · hasp · danger tag"],
     ],
     note: "Training representation only. The installed equipment manuals, arc-flash study, and approved site procedure control field work.",
@@ -1145,14 +1145,14 @@ export default function MotorFloorVRPage() {
     if (drawout.racking) return reportBlocked(`${definition.label} racking command already active`);
     if (gearBreakerClosed(current, id)) return reportBlocked(`${definition.label} must be OPEN before racking`);
     if (!rackChecks.identity || !rackChecks.coupled || !rackChecks.floorLock || !rackChecks.areaClear) {
-      return reportBlocked("complete all RRS-1 setup and clear-area checks");
+      return reportBlocked("complete all remote-racking setup and clear-area checks");
     }
     if (direction === "in" && (drawout.locked || drawout.tagged)) return reportBlocked("remove the isolation lock and danger tag under the release procedure before racking in");
     const sequence: RackPosition[] = ["DISCONNECTED", "TEST", "CONNECTED"];
     const currentIndex = sequence.indexOf(drawout.position);
     const nextIndex = currentIndex + (direction === "in" ? 1 : -1);
     if (nextIndex < 0 || nextIndex >= sequence.length) {
-      return reportBlocked(`RRS-1 over-racking protection stopped at ${drawout.position}`);
+      return reportBlocked(`Remote-racking overtravel protection stopped at ${drawout.position}`);
     }
     const nextPosition = sequence[nextIndex];
     playEquipmentSound("motorStart");
@@ -1162,7 +1162,7 @@ export default function MotorFloorVRPage() {
         ...state.gearBreakers,
         [id]: { ...state.gearBreakers[id], racking: true },
       },
-      event: `RRS-1 remote rack ${direction.toUpperCase()} active · ${definition.label} ${drawout.position} → ${nextPosition}`,
+      event: `Remote rack ${direction.toUpperCase()} active · ${definition.label} ${drawout.position} → ${nextPosition}`,
     }));
     later(950, () => {
       playEquipmentSound("breaker");
@@ -1172,7 +1172,7 @@ export default function MotorFloorVRPage() {
           ...state.gearBreakers,
           [id]: { ...state.gearBreakers[id], position: nextPosition, racking: false },
         },
-        event: `${definition.label} verified in ${nextPosition} · RRS-1 drive stopped`,
+        event: `${definition.label} verified in ${nextPosition} · remote-racking drive stopped`,
       }));
     });
   }, [later, playEquipmentSound, rackChecks, reportBlocked, selectedGearId]);
@@ -1581,11 +1581,15 @@ export default function MotorFloorVRPage() {
     scene.fog = new THREE.Fog(0x07131c, 28, 58);
 
     const camera = new THREE.PerspectiveCamera(68, mount.clientWidth / mount.clientHeight, 0.05, 120);
-    camera.position.set(3.5, 1.68, 11.0);
+    // Keep the camera at the rig origin so movement limits apply to the actual
+    // operator position. The previous 11-foot local offset stopped the user
+    // well short of the switchgear even when the rig reached its travel limit.
+    camera.position.set(0, 1.68, 0);
     camera.rotation.order = "YXZ";
     camera.rotation.x = -0.08;
 
     const rig = new THREE.Group();
+    rig.position.set(3.5, 0, 11.0);
     rig.add(camera);
     scene.add(rig);
 
@@ -1760,8 +1764,8 @@ export default function MotorFloorVRPage() {
         section.add(recess);
 
         const carriage = new THREE.Group();
-        carriage.position.set(0, compartmentY - (isFull ? 0.2 : 0.11), 0.68);
-        carriage.userData.targetZ = 0.68;
+        carriage.position.set(0, compartmentY - (isFull ? 0.2 : 0.11), 0.29);
+        carriage.userData.targetZ = 0.29;
         section.add(carriage);
         visualRef.current.gearCarriages![id] = carriage;
         const breakerMat = material(0x182229, 0.74, 0.3);
@@ -1769,11 +1773,38 @@ export default function MotorFloorVRPage() {
         carriage.add(breaker);
         addInteraction(breaker, id, `gear-${id}`);
         hoverMaterials.set(breaker, breakerMat);
-        [-0.2, 0, 0.2].forEach((poleX) => {
-          const bottle = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, isFull ? 0.42 : 0.25, 12), material(0x8f3c2a, 0.45, 0.48));
-          bottle.position.set(poleX, isFull ? 0.2 : 0.11, 0.13);
-          carriage.add(bottle);
+        // VCP-W drawout vacuum breaker cart. The three phase poles are enclosed
+        // epoxy vacuum-interrupter housings, not fuse barrels.
+        const truckFrame = new THREE.Mesh(new THREE.BoxGeometry(0.66, 0.12, 0.43), material(0x303b40, 0.78, 0.28));
+        truckFrame.position.set(0, isFull ? -0.39 : -0.22, 0.03);
+        carriage.add(truckFrame);
+        [-0.22, 0, 0.22].forEach((poleX) => {
+          const poleHousing = new THREE.Mesh(
+            new THREE.BoxGeometry(0.15, isFull ? 0.39 : 0.23, 0.16),
+            material(0x6f3528, 0.38, 0.52),
+          );
+          poleHousing.position.set(poleX, isFull ? 0.19 : 0.1, 0.16);
+          carriage.add(poleHousing);
+          const phaseCap = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.06, 0.19), material(0xbcc6ca, 0.82, 0.22));
+          phaseCap.position.set(poleX, isFull ? 0.39 : 0.22, 0.17);
+          carriage.add(phaseCap);
         });
+        [-0.25, 0.25].forEach((wheelX) => [-0.13, 0.13].forEach((wheelZ) => {
+          const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.055, 14), material(0x101416, 0.35, 0.72));
+          wheel.rotation.z = Math.PI / 2;
+          wheel.position.set(wheelX, isFull ? -0.48 : -0.3, wheelZ);
+          carriage.add(wheel);
+        }));
+        const mechanismFace = new THREE.Mesh(new THREE.BoxGeometry(0.56, isFull ? 0.34 : 0.2, 0.08), material(0x26343b, 0.64, 0.32));
+        mechanismFace.position.set(0, isFull ? -0.08 : -0.04, 0.17);
+        carriage.add(mechanismFace);
+        const chargedIndicator = new THREE.Mesh(new THREE.PlaneGeometry(0.14, 0.055), new THREE.MeshBasicMaterial({ color: 0x34d17b }));
+        chargedIndicator.position.set(-0.16, isFull ? -0.03 : -0.01, 0.215);
+        carriage.add(chargedIndicator);
+        const drawoutSocket = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.045, 16), material(0xb4bec2, 0.9, 0.2));
+        drawoutSocket.rotation.x = Math.PI / 2;
+        drawoutSocket.position.set(0.18, isFull ? -0.11 : -0.06, 0.22);
+        carriage.add(drawoutSocket);
         const breakerPlate = new THREE.Mesh(
           new THREE.PlaneGeometry(0.5, 0.16),
           new THREE.MeshBasicMaterial({ map: labelTexture(["VCP-W", definition.label], { bg: "#11171b", accent: "#29c7ff", width: 760, height: 310 }) }),
@@ -1874,9 +1905,9 @@ export default function MotorFloorVRPage() {
     sourceTower(-1.05, "SOURCE 1", "sourceA");
     sourceTower(1.05, "SOURCE 2", "sourceB");
 
-    // Portable ArcSafe-style RRS-1 cart, quick-release coupling and local control module.
+    // Generic portable remote-racking cart, quick-release coupling and local control module.
     const rackCart = new THREE.Group();
-    rackCart.position.set(7.05, 0, -8.65);
+    rackCart.position.set(3.9, 0, -7.05);
     rackCart.scale.setScalar(0.78);
     scene.add(rackCart);
     const cartBaseMat = material(0xf2b400, 0.52, 0.34);
@@ -1908,18 +1939,25 @@ export default function MotorFloorVRPage() {
     addInteraction(controlModule, "A1", "openRackCart");
     const cartLabel = new THREE.Mesh(
       new THREE.PlaneGeometry(1.7, 0.58),
-      new THREE.MeshBasicMaterial({ map: labelTexture(["CBS ARCSAFE RRS-1", "REMOTE RACKING · OPEN CONSOLE"], { bg: "#211b05", fg: "#fff6bc", accent: "#f2b400", width: 1100, height: 380 }) }),
+      new THREE.MeshBasicMaterial({ map: labelTexture(["REMOTE RACKING SYSTEM", "PORTABLE DRIVE · OPEN CONSOLE"], { bg: "#211b05", fg: "#fff6bc", accent: "#f2b400", width: 1100, height: 380 }) }),
     );
     cartLabel.position.set(0, 2.75, 0.2);
     rackCart.add(cartLabel);
     addInteraction(cartLabel, "A1", "openRackCart");
 
-    // Field cabinet is now beside the switchgear front aisle. Both doors open to
-    // reveal the print devices; the 869 and local controls ride on the left door.
+    // Field cabinet is installed at the right end of the lineup, outside the
+    // motor-train envelope. The marked front aisle preserves a realistic door
+    // swing and working-clearance area.
     const fieldGroup = new THREE.Group();
-    fieldGroup.position.set(9.35, 0, -8.0);
+    fieldGroup.position.set(8.55, 0, -11.65);
     fieldGroup.scale.setScalar(0.74);
     scene.add(fieldGroup);
+    const fieldClearanceMat = material(0xffb82e, 0.12, 0.62);
+    box(4.35, 0.035, 0.08, 0xffb82e, 8.55, 0.025, -8.75, fieldClearanceMat);
+    box(4.35, 0.035, 0.08, 0xffb82e, 8.55, 0.025, -11.0, fieldClearanceMat);
+    box(0.08, 0.035, 2.33, 0xffb82e, 6.38, 0.025, -9.88, fieldClearanceMat);
+    box(0.08, 0.035, 2.33, 0xffb82e, 10.72, 0.025, -9.88, fieldClearanceMat);
+    labelPlane(["FIELD CABINET WORKING CLEARANCE", "KEEP CLEAR · DOOR SWING"], 3.25, 0.4, 8.55, 0.08, -8.9, { bg: "#211b05", fg: "#fff6bc", accent: "#ffb82e", width: 1300, height: 300 });
     const fieldBodyMat = material(0x263840, 0.62, 0.38);
     const fieldBody = new THREE.Mesh(new THREE.BoxGeometry(3.5, 4.65, 1.5), fieldBodyMat);
     fieldBody.position.y = 2.33;
@@ -1927,7 +1965,7 @@ export default function MotorFloorVRPage() {
     addInteraction(fieldBody, "field");
     hoverMaterials.set(fieldBody, fieldBodyMat);
     const backplate = new THREE.Mesh(new THREE.BoxGeometry(3.18, 4.25, 0.08), material(0xd7d2bd, 0.25, 0.65));
-    backplate.position.set(0, 2.26, 0.78);
+    backplate.position.set(0, 2.26, 0.76);
     fieldGroup.add(backplate);
     const fieldName = labelTexture(["SYNCHRONOUS FIELD CABINET", "SCHEMATIC DEVICES · MOTOR RELAY · LOCAL CONTROL"], { bg: "#101b24", accent: "#a278ff", width: 1400, height: 400 });
     const fieldLabel = new THREE.Mesh(new THREE.PlaneGeometry(3.18, 0.52), new THREE.MeshBasicMaterial({ map: fieldName }));
@@ -1936,9 +1974,9 @@ export default function MotorFloorVRPage() {
 
     const fieldDoorMat = material(0x41545c, 0.54, 0.36);
     const leftFieldDoor = new THREE.Group();
-    leftFieldDoor.position.set(-1.68, 0, 0.84);
-    leftFieldDoor.userData.targetRotation = -0.8;
-    leftFieldDoor.rotation.y = -0.8;
+    leftFieldDoor.position.set(-1.68, 0, 0.97);
+    leftFieldDoor.userData.targetRotation = 0;
+    leftFieldDoor.rotation.y = 0;
     fieldGroup.add(leftFieldDoor);
     breakerDoorPivots.push(leftFieldDoor);
     const leftDoorPanel = new THREE.Mesh(new THREE.BoxGeometry(1.64, 4.35, 0.09), fieldDoorMat);
@@ -1947,14 +1985,14 @@ export default function MotorFloorVRPage() {
     addInteraction(leftDoorPanel, "field", "door-field-left");
     hoverMaterials.set(leftDoorPanel, fieldDoorMat);
     actionRef.current["door-field-left"] = () => {
-      leftFieldDoor.userData.targetRotation = Math.abs(Number(leftFieldDoor.userData.targetRotation)) < 0.2 ? -0.8 : 0;
+      leftFieldDoor.userData.targetRotation = Math.abs(Number(leftFieldDoor.userData.targetRotation)) < 0.2 ? -1.62 : 0;
       setSelectedId("field");
     };
 
     const rightFieldDoor = new THREE.Group();
-    rightFieldDoor.position.set(1.68, 0, 0.84);
-    rightFieldDoor.userData.targetRotation = 0.8;
-    rightFieldDoor.rotation.y = 0.8;
+    rightFieldDoor.position.set(1.68, 0, 0.97);
+    rightFieldDoor.userData.targetRotation = 0;
+    rightFieldDoor.rotation.y = 0;
     fieldGroup.add(rightFieldDoor);
     breakerDoorPivots.push(rightFieldDoor);
     const rightDoorPanel = new THREE.Mesh(new THREE.BoxGeometry(1.64, 4.35, 0.09), fieldDoorMat.clone());
@@ -1962,7 +2000,7 @@ export default function MotorFloorVRPage() {
     rightFieldDoor.add(rightDoorPanel);
     addInteraction(rightDoorPanel, "field", "door-field-right");
     actionRef.current["door-field-right"] = () => {
-      rightFieldDoor.userData.targetRotation = Math.abs(Number(rightFieldDoor.userData.targetRotation)) < 0.2 ? 0.8 : 0;
+      rightFieldDoor.userData.targetRotation = Math.abs(Number(rightFieldDoor.userData.targetRotation)) < 0.2 ? 1.62 : 0;
       setSelectedId("field");
     };
     const rightDoorMimic = new THREE.Mesh(
@@ -2037,12 +2075,12 @@ export default function MotorFloorVRPage() {
     function fieldDevice(x: number, y: number, w: number, h: number, title: string, accent: number, subtitle = "", statusKey?: "m" | "mg" | "far" | "field" | "resistor" | "k45") {
       const statusMat = material(0x202a2f, 0.38, 0.36);
       const frame = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.2), statusMat);
-      frame.position.set(x, y, 0.88);
+      frame.position.set(x, y, 0.79);
       fieldGroup.add(frame);
       if (statusKey) visualRef.current.fieldSequence![statusKey] = statusMat;
       const texture = labelTexture([title, subtitle], { bg: "#071116", accent: `#${accent.toString(16).padStart(6, "0")}`, width: 900, height: 360 });
       const face = new THREE.Mesh(new THREE.PlaneGeometry(w * 0.88, h * 0.72), new THREE.MeshBasicMaterial({ map: texture }));
-      face.position.set(x, y, 0.995);
+      face.position.set(x, y, 0.905);
       fieldGroup.add(face);
       return frame;
     }
@@ -2064,7 +2102,7 @@ export default function MotorFloorVRPage() {
     fieldDevice(1.0, 1.35, 0.92, 0.52, "TB-MPR", 0x34d17b, "RTD · VIB");
     for (let index = 0; index < 10; index += 1) {
       const terminal = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.26, 0.18), material(index % 2 ? 0x306e9a : 0xd39a29, 0.3, 0.42));
-      terminal.position.set(-1.33 + index * 0.295, 0.62, 0.9);
+      terminal.position.set(-1.33 + index * 0.295, 0.62, 0.8);
       fieldGroup.add(terminal);
     }
 
@@ -2459,7 +2497,9 @@ export default function MotorFloorVRPage() {
       group.add(slipRingTag);
       const label = labelTexture([title, subtitle], { bg: "#0c1c25", accent: "#ff8b3d", width: 1000, height: 370 });
       const plate = new THREE.Mesh(new THREE.PlaneGeometry(Math.min(length * 0.7, 2.8), 0.62), new THREE.MeshBasicMaterial({ map: label }));
-      plate.position.set(0, 0.22, radius + 0.04);
+      // Keep the nameplate in front of the cooling ribs so the text is never
+      // sliced by the motor geometry from the switchgear-side view.
+      plate.position.set(0, 0.22, radius + 0.18);
       group.add(plate);
       const footMat = material(0x202a30, 0.75, 0.38);
       [-length * 0.32, length * 0.32].forEach((footX) => {
@@ -2509,7 +2549,7 @@ export default function MotorFloorVRPage() {
     pumpGroup.add(pumpHub);
     const pumpPlate = labelTexture(["CENTRIFUGAL PUMP", "COMMON SHAFT"], { bg: "#1e1510", accent: "#ff8b3d", width: 900, height: 350 });
     const pumpLabel = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.55), new THREE.MeshBasicMaterial({ map: pumpPlate }));
-    pumpLabel.position.set(0, 0.24, 1.32);
+    pumpLabel.position.set(0, 0.48, 1.62);
     pumpGroup.add(pumpLabel);
 
     const pipeMat = material(0x3a7b91, 0.55, 0.34);
@@ -2562,28 +2602,38 @@ export default function MotorFloorVRPage() {
     valvePlate.position.set(0, 1.7, 0.78);
     valveGroup.add(valvePlate);
 
-    // Five individual bearing stations with labels kept apart.
+    // Five individual bearing stations. The nameplates share a clear front
+    // rail, with leaders back to the actual bearing locations, so neither the
+    // valve nor adjacent bearing tags can cover their text.
     const bearings = [
-      [-5.75, "MOTOR OB", "mob"],
-      [-2.15, "MOTOR IB", "mib"],
-      [-0.35, "PUMP IB", "pib"],
-      [2.15, "PUMP OB", "pob"],
-      [2.85, "THRUST", "thrust"],
-    ] as Array<[number, string, BearingKey]>;
+      [-5.75, -5.85, "MOTOR OB", "mob"],
+      [-2.15, -3.7, "MOTOR IB", "mib"],
+      [-0.35, -1.55, "PUMP IB", "pib"],
+      [2.15, 0.6, "PUMP OB", "pob"],
+      [2.85, 2.75, "THRUST", "thrust"],
+    ] as Array<[number, number, string, BearingKey]>;
     visualRef.current.bearingIndicators = {};
-    bearings.forEach(([x, name, key], index) => {
+    bearings.forEach(([x, labelX, name, key], index) => {
       const bearingMat = material(0x657780, 0.7, 0.32);
       const pedestal = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.65, 0.82), bearingMat);
       pedestal.position.set(x, 0.73, 3.2);
       motorTrainLayout.add(pedestal);
       visualRef.current.bearingIndicators![key] = bearingMat;
-      const tag = labelTexture([name, "75 ALM · 85 TRIP"], { bg: "#15242b", accent: index % 2 ? "#29c7ff" : "#34d17b", width: 900, height: 340 });
-      const plate = new THREE.Mesh(new THREE.PlaneGeometry(1.32, 0.46), new THREE.MeshBasicMaterial({ map: tag }));
-      plate.position.set(x, 0.62 + (index % 2) * 0.55, 3.67 + (index % 2) * 0.08);
+      const accent = index % 2 ? 0x29c7ff : 0x34d17b;
+      const tag = labelTexture([name, "75 ALM · 85 TRIP"], { bg: "#15242b", accent: `#${accent.toString(16).padStart(6, "0")}`, width: 900, height: 340 });
+      const plate = new THREE.Mesh(new THREE.PlaneGeometry(1.62, 0.5), new THREE.MeshBasicMaterial({ map: tag }));
+      plate.position.set(labelX, 0.76, 5.36);
       motorTrainLayout.add(plate);
+      const leaderGeometry = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(x, 1.08, 3.66),
+        new THREE.Vector3(x, 1.08, 4.62),
+        new THREE.Vector3(labelX, 0.98, 5.06),
+      ]);
+      const leader = new THREE.Line(leaderGeometry, new THREE.LineBasicMaterial({ color: accent }));
+      motorTrainLayout.add(leader);
     });
 
-    machineLabel(["SINGLE-SPEED MOTOR / PUMP", "VIBRATION TRIP = 0.20 in/s RMS"], 5.8, 0.88, -1.5, 4.55, 5.62, {
+    machineLabel(["SINGLE-SPEED MOTOR / PUMP", "VIBRATION TRIP = 0.20 in/s RMS"], 5.4, 0.82, -1.5, 4.15, 5.62, {
       bg: "#15111c",
       accent: "#a278ff",
     });
@@ -2730,7 +2780,7 @@ export default function MotorFloorVRPage() {
       });
       Object.values(visualRef.current.gearCarriages ?? {}).forEach((carriage) => {
         if (!carriage) return;
-        carriage.position.z = THREE.MathUtils.lerp(carriage.position.z, Number(carriage.userData.targetZ ?? 0.68), Math.min(1, delta * 2.8));
+        carriage.position.z = THREE.MathUtils.lerp(carriage.position.z, Number(carriage.userData.targetZ ?? 0.29), Math.min(1, delta * 2.8));
       });
       const running = stateRef.current.motorStatus === "RUNNING";
       if (running) {
@@ -2823,7 +2873,10 @@ export default function MotorFloorVRPage() {
       const carriage = visuals.gearCarriages?.[id];
       if (carriage) {
         const position = plant.gearBreakers[id].position;
-        carriage.userData.targetZ = position === "CONNECTED" ? 0.68 : position === "TEST" ? 0.82 : 1.04;
+        // Racking positions remain within the cubicle envelope. CONNECTED is
+        // deepest, TEST moves forward slightly, and DISCONNECTED stops behind
+        // the closed-door plane until a separate withdrawal operation occurs.
+        carriage.userData.targetZ = position === "CONNECTED" ? 0.29 : position === "TEST" ? 0.36 : 0.44;
       }
     });
     BEARING_KEYS.forEach((key) => {
@@ -3219,7 +3272,7 @@ export default function MotorFloorVRPage() {
           <button className="vr-icon-button sound-button" type="button" onClick={toggleSound} aria-pressed={soundEnabled}>{soundEnabled ? "Sound on" : "Sound off"}</button>
           <button className="vr-icon-button relay-top-button" type="button" onClick={() => setRelayOpen(true)}>Motor relay</button>
           <button className="vr-icon-button ovation-top-button" type="button" onClick={() => setOvationOpen(true)}>DCS</button>
-          <button className="vr-icon-button rack-top-button" type="button" onClick={() => openGearStation(selectedGearId)}>Breakers / RRS-1</button>
+          <button className="vr-icon-button rack-top-button" type="button" onClick={() => openGearStation(selectedGearId)}>Breakers / Racking</button>
           <button className="vr-icon-button loto-top-button" type="button" onClick={() => setLotoOpen(true)}>LOTO</button>
           <button className="vr-icon-button" type="button" onClick={() => setHelpOpen((open) => !open)} aria-expanded={helpOpen}>
             Help
@@ -3480,7 +3533,7 @@ export default function MotorFloorVRPage() {
 
           <nav className="gear-tabs" aria-label="Breaker workstation pages">
             <button type="button" className={gearTab === "controls" ? "selected" : ""} onClick={() => setGearTab("controls")}>Breaker / LOTO</button>
-            <button type="button" className={gearTab === "racking" ? "selected" : ""} onClick={() => setGearTab("racking")}>ArcSafe RRS-1</button>
+            <button type="button" className={gearTab === "racking" ? "selected" : ""} onClick={() => setGearTab("racking")}>Remote Racking</button>
             <button type="button" className={gearTab === "sop" ? "selected" : ""} onClick={() => setGearTab("sop")}>Breaker SOP</button>
           </nav>
 
@@ -3525,7 +3578,7 @@ export default function MotorFloorVRPage() {
           {gearTab === "racking" && (
             <div className="rrs-console">
               <header>
-                <div><span>CBS ARCSAFE RRS-1 · TRAINING REPRESENTATION</span><strong>Universal rotary remote racking console</strong></div>
+                <div><span>REMOTE RACKING SYSTEM · TRAINING REPRESENTATION</span><strong>Portable rotary remote-racking console</strong></div>
                 <b className={selectedGearState.racking ? "racking" : rackReady ? "ready" : "hold"}>{selectedGearState.racking ? "DRIVE ACTIVE" : rackReady ? "READY" : "SETUP HOLD"}</b>
               </header>
               <div className="rrs-position-track" aria-label={`Breaker position ${selectedGearState.position}`}>
@@ -3535,7 +3588,7 @@ export default function MotorFloorVRPage() {
               </div>
               <div className="rrs-body">
                 <section className="rrs-machine-graphic" aria-label="Remote racking machine graphic">
-                  <div className="rrs-cart"><i className="rrs-drive" /><i className="rrs-shaft" /><i className="rrs-control" /><span>RRS-1</span></div>
+                  <div className="rrs-cart"><i className="rrs-drive" /><i className="rrs-shaft" /><i className="rrs-control" /><span>RRS</span></div>
                   <p>Portable drive · quick-release rotary shaft · control module · floor stabilizer</p>
                 </section>
                 <section className="rrs-checks">
@@ -3551,7 +3604,7 @@ export default function MotorFloorVRPage() {
                 <div><span>REMOTE DRIVE</span><b>{selectedGearState.racking ? "RUNNING" : "STOPPED"}</b><small>Redundant end-position / over-rack protection simulated</small></div>
                 <button type="button" disabled={selectedGearState.racking} onClick={() => rackGearBreaker("in")}>RACK IN</button>
               </div>
-              <p className="rrs-note">The RRS-1 representation models a portable rotary remote-racking setup and keeps the operator away from the breaker compartment. Actual shafts, couplings, torque settings, boundaries, and operating steps must come from the breaker-specific <a href="https://cbsarcsafe.com/products/remote-racking-solutions/remote-racking-systems/rrs-1/" target="_blank" rel="noreferrer">CBS ArcSafe instructions</a>, <a href="https://www.eaton.com/us/en-us/catalog/electrical-circuit-protection/mv-vcp-w-vacuum-circuit-breakers.html" target="_blank" rel="noreferrer">Eaton VCP-W manual</a>, and approved facility procedure.</p>
+              <p className="rrs-note">This generic representation models a portable rotary remote-racking setup and keeps the operator away from the breaker compartment. Actual shafts, couplings, torque settings, boundaries, and operating steps must come from the installed remote-racking equipment instructions, the <a href="https://www.eaton.com/us/en-us/catalog/electrical-circuit-protection/mv-vcp-w-vacuum-circuit-breakers.html" target="_blank" rel="noreferrer">Eaton VCP-W manual</a>, and approved facility procedure.</p>
             </div>
           )}
 
@@ -3563,14 +3616,14 @@ export default function MotorFloorVRPage() {
                 <li><b>Plan and authorize.</b> Confirm the correct one-line, source/load, operating order, switching authority, incident-energy label, PPE, and affected-employee notification.</li>
                 <li><b>Identify the device.</b> Match {selectedGearDefinition.label}, {selectedGearDefinition.duty}, Bus {selectedGearDefinition.bus === "CENTER" ? "center MTM" : selectedGearDefinition.bus}, and the physical compartment.</li>
                 <li><b>Open and verify.</b> Issue OPEN/TRIP, verify the 52 OPEN indication and current interruption, and confirm the motor is stopped before opening A1.</li>
-                <li><b>Set up remote racking.</b> Inspect the RRS-1-style cart, correct shaft/coupling and torque-limiting parts; engage the port, stabilize the cart, close the door, clear the area, and move to the remote control point.</li>
+                <li><b>Set up remote racking.</b> Inspect the portable drive cart, correct shaft/coupling and torque-limiting parts; engage the port, stabilize the cart, close the door, clear the area, and move to the remote control point.</li>
                 <li><b>Rack out.</b> Move CONNECTED → TEST → DISCONNECTED one detent at a time. Verify position indication, secondary disconnect state, and closed primary shutters; stop on abnormal sound, movement, or torque.</li>
                 <li><b>Apply hazardous-energy control.</b> Follow the approved LOTO method: apply the hasp, yellow isolation lock and completed danger tag; secure controlled keys and apply group/personal locks as required.</li>
                 <li><b>Verify safe condition.</b> Perform the required try operation, return controls to neutral, and have a qualified person perform the approved live-dead-live absence-of-voltage test and stored-energy controls.</li>
                 <li><b>Restore deliberately.</b> Inspect the area, account for people and tools, have each person remove their own lock, complete notifications, remove isolation hardware under authorization, rack DISCONNECTED → TEST → CONNECTED, then close only on a valid switching order.</li>
               </ol>
-              <div className="sop-actions"><button type="button" onClick={() => setGearTab("controls")}>Go to breaker controls</button><button type="button" onClick={() => setGearTab("racking")}>Go to RRS-1 console</button><button type="button" onClick={startLotoForGear}>Start group LOTO</button></div>
-              <p>Training aid only—not an energized-work authorization or substitute for Eaton/CBS ArcSafe manuals, the arc-flash study, OSHA/NFPA requirements, or your facility&apos;s approved switching and lockout procedures.</p>
+              <div className="sop-actions"><button type="button" onClick={() => setGearTab("controls")}>Go to breaker controls</button><button type="button" onClick={() => setGearTab("racking")}>Go to racking console</button><button type="button" onClick={startLotoForGear}>Start group LOTO</button></div>
+              <p>Training aid only—not an energized-work authorization or substitute for equipment-manufacturer manuals, the arc-flash study, OSHA/NFPA requirements, or your facility&apos;s approved switching and lockout procedures.</p>
             </article>
           )}
         </section>
@@ -3796,7 +3849,7 @@ export default function MotorFloorVRPage() {
           <div className="dock-starter-breakers">
             <span>LOAD-RATED MOTOR FEEDER</span>
             <div><b>52-A1 · {statusWord(plant.starterLowClosed)}</b><button type="button" onClick={() => operateStarter("low", true, "DCS")}>Close</button><button type="button" onClick={() => operateStarter("low", false, "DCS")}>Open</button></div>
-            <button type="button" onClick={() => openGearStation("A1")}>Breaker / RRS-1 / SOP</button>
+            <button type="button" onClick={() => openGearStation("A1")}>Breaker / Racking / SOP</button>
           </div>
         </div>
 
