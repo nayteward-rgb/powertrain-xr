@@ -2,11 +2,11 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Synchronous Pump Trainer",
-    short_name: "Pump Trainer",
+    name: "PowerTrain XR",
+    short_name: "PowerTrain XR",
     description:
-      "Scenario-based troubleshooting practice for a two-speed synchronous pump motor controller.",
-    start_url: "/",
+      "Mobile and WebXR industrial training for medium-voltage switching, synchronous motor controls, protection, and LOTO.",
+    start_url: "/motor-floor-vr",
     display: "standalone",
     background_color: "#0b100f",
     theme_color: "#0b100f",

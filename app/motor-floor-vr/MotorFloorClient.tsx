@@ -478,6 +478,7 @@ export default function MotorFloorVRPage() {
   const timersRef = useRef<number[]>([]);
   const motorSequenceRef = useRef(0);
   const actionRef = useRef<Record<string, () => void>>({});
+  const mobileMovementRef = useRef({ forward: false, back: false, left: false, right: false });
   const audioRef = useRef<AudioEngine | null>(null);
   const soundEnabledRef = useRef(true);
   const visualRef = useRef<{
@@ -525,6 +526,26 @@ export default function MotorFloorVRPage() {
   const [lockRemovalAuthorized, setLockRemovalAuthorized] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [webglUnavailable, setWebglUnavailable] = useState(false);
+  const [mobileControlsOpen, setMobileControlsOpen] = useState(false);
+  const [mobileInspectionOpen, setMobileInspectionOpen] = useState(false);
+  const [walkMode, setWalkMode] = useState(false);
+
+  const toggleWalkMode = useCallback(() => {
+    setWalkMode((hidden) => {
+      const next = !hidden;
+      if (next) {
+        setHelpOpen(false);
+        setLotoOpen(false);
+        setTrainingOpen(false);
+        setRelayOpen(false);
+        setOvationOpen(false);
+        setGearDialogOpen(false);
+        setMobileControlsOpen(false);
+        setMobileInspectionOpen(false);
+      }
+      return next;
+    });
+  }, []);
 
   const selected = useMemo(() => {
     if (INSPECTIONS[selectedId]) return INSPECTIONS[selectedId];
@@ -1581,10 +1602,19 @@ export default function MotorFloorVRPage() {
     renderer.xr.enabled = true;
     mount.appendChild(renderer.domElement);
 
-    const vrButton = VRButton.createButton(renderer, { optionalFeatures: ["local-floor", "bounded-floor"] });
-    vrButton.id = "enter-vr-button";
-    vrButton.setAttribute("aria-label", "Enter virtual reality motor floor");
-    mount.appendChild(vrButton);
+    let vrButton: HTMLElement | null = null;
+    let rendererDisposed = false;
+    if (navigator.xr) {
+      void navigator.xr.isSessionSupported("immersive-vr").then((supported) => {
+        if (!supported || rendererDisposed || !mount.isConnected) return;
+        vrButton = VRButton.createButton(renderer, { optionalFeatures: ["local-floor", "bounded-floor"] });
+        vrButton.id = "enter-vr-button";
+        vrButton.setAttribute("aria-label", "Enter virtual reality motor floor");
+        mount.appendChild(vrButton);
+      }).catch(() => {
+        // Standard 3D mode remains available when immersive VR detection fails.
+      });
+    }
 
     scene.add(new THREE.HemisphereLight(0xcceeff, 0x172029, 2.1));
     const keyLight = new THREE.DirectionalLight(0xffffff, 2.8);
@@ -2683,10 +2713,10 @@ export default function MotorFloorVRPage() {
         const forward = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
         const right = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
         const move = new THREE.Vector3();
-        if (keys.has("w") || keys.has("arrowup")) move.add(forward);
-        if (keys.has("s") || keys.has("arrowdown")) move.sub(forward);
-        if (keys.has("d") || keys.has("arrowright")) move.add(right);
-        if (keys.has("a") || keys.has("arrowleft")) move.sub(right);
+        if (keys.has("w") || keys.has("arrowup") || mobileMovementRef.current.forward) move.add(forward);
+        if (keys.has("s") || keys.has("arrowdown") || mobileMovementRef.current.back) move.sub(forward);
+        if (keys.has("d") || keys.has("arrowright") || mobileMovementRef.current.right) move.add(right);
+        if (keys.has("a") || keys.has("arrowleft") || mobileMovementRef.current.left) move.sub(right);
         if (move.lengthSq() > 0) {
           move.normalize().multiplyScalar(delta * (keys.has("shift") ? 7 : 3.4));
           rig.position.add(move);
@@ -2737,7 +2767,8 @@ export default function MotorFloorVRPage() {
       renderer.domElement.removeEventListener("pointermove", onPointerMove);
       renderer.domElement.removeEventListener("pointerup", onPointerUp);
       controllers.forEach((controller) => rig.remove(controller));
-      vrButton.remove();
+      rendererDisposed = true;
+      vrButton?.remove();
       renderer.dispose();
       scene.traverse((object) => {
         if (object instanceof THREE.Mesh || object instanceof THREE.Line) {
@@ -3145,8 +3176,17 @@ export default function MotorFloorVRPage() {
   }, [playEquipmentSound, relayPage]);
 
   return (
-    <main className="motor-floor-shell">
+    <main className={`motor-floor-shell ${walkMode ? "walk-mode" : ""}`}>
       <div ref={mountRef} className="motor-floor-canvas" aria-label="Interactive 3D medium-voltage synchronous motor training floor" />
+
+      <button
+        className={`walk-mode-toggle ${walkMode ? "active" : ""}`}
+        type="button"
+        onClick={toggleWalkMode}
+        aria-pressed={walkMode}
+      >
+        {walkMode ? "Show controls" : "Walk mode"}
+      </button>
 
       {webglUnavailable && (
         <section className="webgl-fallback" role="status">
@@ -3170,7 +3210,7 @@ export default function MotorFloorVRPage() {
       <header className="vr-topbar">
         <div>
           <span className="vr-kicker">MEDIUM-VOLTAGE SYNCHRONOUS MOTOR TRAINER</span>
-          <h1>Interactive motor floor · WebXR</h1>
+          <h1>Interactive motor floor</h1>
         </div>
         <div className="vr-top-actions">
           <span className={`vr-state-pill ${plant.lotoActive || plant.overlap ? "parallel" : plant.busy ? "active" : "ready"}`}>
@@ -3188,18 +3228,62 @@ export default function MotorFloorVRPage() {
         </div>
       </header>
 
+      <div className="mobile-orientation-tip" role="status">
+        Rotate to landscape for the widest motor-floor view
+      </div>
+
+      <nav className="mobile-quickbar" aria-label="Mobile simulator controls">
+        <button type="button" className={mobileControlsOpen ? "active" : ""} onClick={() => setMobileControlsOpen((open) => !open)}>
+          {mobileControlsOpen ? "Close panel" : "Controls"}
+        </button>
+        <button type="button" className={mobileInspectionOpen ? "active" : ""} onClick={() => setMobileInspectionOpen((open) => !open)}>Info</button>
+        <button type="button" onClick={() => openGearStation(selectedGearId)}>Breakers</button>
+        <button type="button" onClick={() => setRelayOpen(true)}>Relay</button>
+        <button type="button" className={plant.lotoActive ? "warning" : ""} onClick={() => setLotoOpen(true)}>LOTO</button>
+        <button type="button" className={soundEnabled ? "active" : ""} onClick={toggleSound}>{soundEnabled ? "Sound" : "Muted"}</button>
+      </nav>
+
+      <div className={`mobile-move-pad ${mobileControlsOpen ? "panel-open" : ""}`} aria-label="Touch movement pad">
+        {([
+          ["forward", "▲", "Move forward"],
+          ["left", "◀", "Move left"],
+          ["right", "▶", "Move right"],
+          ["back", "▼", "Move backward"],
+        ] as const).map(([direction, label, ariaLabel]) => (
+          <button
+            key={direction}
+            type="button"
+            className={`move-${direction}`}
+            aria-label={ariaLabel}
+            onPointerDown={(event) => {
+              event.preventDefault();
+              mobileMovementRef.current[direction] = true;
+              event.currentTarget.setPointerCapture(event.pointerId);
+            }}
+            onPointerUp={(event) => {
+              mobileMovementRef.current[direction] = false;
+              if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+            }}
+            onPointerCancel={() => { mobileMovementRef.current[direction] = false; }}
+            onPointerLeave={() => { mobileMovementRef.current[direction] = false; }}
+          >{label}</button>
+        ))}
+        <span>DRAG VIEW</span>
+      </div>
+
       {helpOpen && (
         <section className="vr-help-card" aria-label="Controls">
           <button className="vr-close" type="button" onClick={() => setHelpOpen(false)} aria-label="Close help">×</button>
           <span className="vr-kicker">HOW TO MOVE</span>
           <h2>Laptop, tablet, or Quest 2</h2>
           <p><strong>Laptop:</strong> drag to look, W/A/S/D to walk, and click equipment to inspect it.</p>
+          <p><strong>Phone:</strong> drag the motor floor to look, hold the arrow pad to walk, and use the bottom bar for controls, relay, breakers, and LOTO. Add this page to your home screen for an app-style launch.</p>
           <p><strong>Quest 2:</strong> choose Enter VR, point at equipment and squeeze the trigger. Point at the floor and squeeze to teleport.</p>
           <p>The normally scaled control board, attached fault/RTD/vibration training bay, exciter-cabinet controls, local breaker OPEN/CLOSE buttons, selector, animated valve, and LOTO station also work from the headset. Equipment sound begins after the first control is pressed.</p>
         </section>
       )}
 
-      <aside className="inspection-card" aria-live="polite">
+      <aside className={`inspection-card ${mobileInspectionOpen ? "mobile-inspection-open" : "mobile-inspection-hidden"}`} aria-live="polite">
         <div className="inspection-heading">
           <div>
             <span className="vr-kicker">{selected.eyebrow}</span>
@@ -3673,7 +3757,7 @@ export default function MotorFloorVRPage() {
         </section>
       )}
 
-      <section className="mtm-dock unified-dock" aria-label="Unified motor and main tie main training controls">
+      <section className={`mtm-dock unified-dock ${mobileControlsOpen ? "mobile-open" : "mobile-closed"}`} aria-label="Unified motor and main tie main training controls">
         <div className="control-summary">
           <span className="vr-kicker">DCS REMOTE CONTROL BOARD</span>
           <strong>{plant.motorEvent}</strong>

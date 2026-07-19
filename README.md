@@ -99,6 +99,14 @@ npm run dev
 
 Open the local URL printed by Vite, then select `/motor-floor-vr` for the 3D simulator.
 
+### Smartphone and home-screen use
+
+Open `/motor-floor-vr` in Safari on iPhone or Chrome on Android. The mobile layout provides a touch movement pad, a collapsible full control board, and quick access to breaker racking, the motor relay, LOTO, and sound. Rotate to landscape for the widest motor-floor view.
+
+Use **Walk mode** to hide the control board, header, inspection card, and other overlays for an unobstructed equipment-room view. The touch movement pad remains available, and **Show controls** restores the complete interface instantly.
+
+To install it like an app, use **Share → Add to Home Screen** on iPhone or **Browser menu → Add to Home screen / Install app** on Android. The installed shortcut opens directly to the motor floor; no account or app-store download is required.
+
 ### Validation
 
 ```bash

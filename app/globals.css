@@ -49,6 +49,65 @@ body {
   color: #eef8fb;
 }
 
+.mobile-quickbar,
+.mobile-move-pad,
+.mobile-orientation-tip {
+  display: none;
+}
+
+.walk-mode-toggle {
+  position: fixed;
+  z-index: 52;
+  top: 86px;
+  left: 16px;
+  min-height: 40px;
+  border: 1px solid #4c6d79;
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: rgba(7, 25, 33, .9);
+  color: #cfeaf4;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .34);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  backdrop-filter: blur(10px);
+  cursor: pointer;
+}
+
+.walk-mode-toggle::before {
+  content: "◉";
+  margin-right: 7px;
+  color: #54dbff;
+}
+
+.walk-mode-toggle.active {
+  border-color: #ffb82e;
+  background: rgba(54, 39, 4, .92);
+  color: #ffe59a;
+}
+
+.walk-mode-toggle.active::before {
+  content: "▣";
+  color: #ffcd5b;
+}
+
+.walk-mode .vr-topbar,
+.walk-mode .inspection-card,
+.walk-mode .mtm-dock,
+.walk-mode .mobile-quickbar,
+.walk-mode .mobile-orientation-tip,
+.walk-mode .vr-safety-banner,
+.walk-mode .vr-help-card,
+.walk-mode .relay-dialog,
+.walk-mode .ovation-dialog,
+.walk-mode .gear-dialog,
+.walk-mode .loto-dialog,
+.walk-mode .training-dialog,
+.walk-mode #enter-vr-button {
+  display: none !important;
+}
+
 .motor-floor-canvas,
 .motor-floor-canvas canvas {
   width: 100%;
@@ -1693,20 +1752,148 @@ button.vr-icon-button {
 }
 
 @media (max-width: 760px) {
+  html,
+  body {
+    overscroll-behavior: none;
+  }
+
+  .motor-floor-shell {
+    min-height: 100dvh;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
   .vr-topbar {
+    top: max(8px, env(safe-area-inset-top));
+    left: 8px;
+    right: 8px;
     align-items: flex-start;
   }
 
   .vr-topbar > div:first-child {
-    max-width: 54vw;
+    max-width: calc(100vw - 16px);
+    padding: 9px 11px 8px;
   }
 
   .vr-topbar h1 {
-    font-size: 15px;
+    font-size: 14px;
   }
 
-  .vr-state-pill,
-  .vr-top-actions .vr-icon-button:nth-last-child(-n+2) {
+  .vr-top-actions,
+  .vr-state-pill {
+    display: none;
+  }
+
+  .mobile-quickbar {
+    position: fixed;
+    z-index: 45;
+    right: 6px;
+    bottom: max(6px, env(safe-area-inset-bottom));
+    left: 6px;
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 4px;
+    border: 1px solid #385764;
+    border-top: 3px solid #29c7ff;
+    border-radius: 9px;
+    padding: 5px;
+    background: rgba(4, 15, 21, 0.96);
+    box-shadow: 0 10px 34px rgba(0, 0, 0, 0.48);
+    backdrop-filter: blur(14px);
+  }
+
+  .walk-mode-toggle {
+    top: auto;
+    right: 10px;
+    bottom: calc(68px + env(safe-area-inset-bottom));
+    left: auto;
+    min-height: 42px;
+    padding: 8px 12px;
+    background: rgba(5, 21, 28, .94);
+  }
+
+  .walk-mode .walk-mode-toggle {
+    bottom: max(10px, env(safe-area-inset-bottom));
+  }
+
+  .mobile-quickbar button {
+    min-width: 0;
+    min-height: 44px;
+    border: 1px solid #365966;
+    border-radius: 6px;
+    padding: 4px 2px;
+    background: #102630;
+    color: #c9e4ef;
+    font-size: 8px;
+    font-weight: 900;
+    letter-spacing: .02em;
+    text-transform: uppercase;
+    touch-action: manipulation;
+  }
+
+  .mobile-quickbar button.active {
+    border-color: #29c7ff;
+    background: #0d4960;
+    color: #e8f9ff;
+  }
+
+  .mobile-quickbar button.warning {
+    border-color: #ffd21f;
+    background: #463a00;
+    color: #fff08a;
+  }
+
+  .mobile-move-pad {
+    position: fixed;
+    z-index: 19;
+    bottom: calc(68px + env(safe-area-inset-bottom));
+    left: 10px;
+    width: 126px;
+    height: 126px;
+    display: grid;
+    grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+    gap: 3px;
+    border-radius: 50%;
+    padding: 7px;
+    background: rgba(4, 16, 22, .76);
+    box-shadow: 0 8px 26px rgba(0, 0, 0, .35);
+    backdrop-filter: blur(8px);
+  }
+
+  .mobile-move-pad.panel-open {
+    display: none;
+  }
+
+  .mobile-move-pad button {
+    border: 1px solid #54717c;
+    border-radius: 8px;
+    background: rgba(19, 47, 58, .94);
+    color: #d9f4ff;
+    font-size: 18px;
+    font-weight: 900;
+    touch-action: none;
+    user-select: none;
+  }
+
+  .mobile-move-pad button:active {
+    border-color: #29c7ff;
+    background: #126080;
+  }
+
+  .mobile-move-pad .move-forward { grid-area: 1 / 2; }
+  .mobile-move-pad .move-left { grid-area: 2 / 1; }
+  .mobile-move-pad .move-right { grid-area: 2 / 3; }
+  .mobile-move-pad .move-back { grid-area: 3 / 2; }
+  .mobile-move-pad span {
+    grid-area: 2 / 2;
+    display: grid;
+    place-items: center;
+    color: #6e929f;
+    font-size: 7px;
+    font-weight: 900;
+    text-align: center;
+  }
+
+  .mobile-orientation-tip {
     display: none;
   }
 
@@ -1716,6 +1903,15 @@ button.vr-icon-button {
     width: min(280px, calc(100vw - 20px));
     max-height: 34vh;
     padding: 13px;
+  }
+
+  .inspection-card.mobile-inspection-hidden {
+    display: none;
+  }
+
+  .inspection-card.mobile-inspection-open {
+    top: calc(66px + env(safe-area-inset-top));
+    max-height: calc(100dvh - 148px - env(safe-area-inset-bottom));
   }
 
   .inspection-card > p,
@@ -1730,13 +1926,21 @@ button.vr-icon-button {
   .mtm-dock {
     left: 8px;
     right: 8px;
-    bottom: 8px;
+    bottom: calc(66px + env(safe-area-inset-bottom));
     width: auto;
-    max-height: 49vh;
+    max-height: calc(100dvh - 134px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
     grid-template-columns: 1fr;
     gap: 7px;
     overflow: auto;
     padding: 10px;
+  }
+
+  .mtm-dock.mobile-closed {
+    display: none;
+  }
+
+  .mtm-dock.mobile-open {
+    display: grid;
   }
 
   .control-summary {
@@ -1776,7 +1980,7 @@ button.vr-icon-button {
 
   #enter-vr-button {
     right: 10px !important;
-    bottom: 151px !important;
+    bottom: calc(204px + env(safe-area-inset-bottom)) !important;
     min-width: 128px !important;
     height: 46px !important;
   }
@@ -1852,6 +2056,39 @@ button.vr-icon-button {
   .rrs-controls { grid-template-columns: 1fr; }
   .sop-actions,
   .gear-loto-actions { grid-template-columns: 1fr; }
+
+  .relay-dialog,
+  .ovation-dialog,
+  .gear-dialog,
+  .loto-dialog,
+  .training-dialog {
+    bottom: calc(62px + env(safe-area-inset-bottom));
+    max-height: calc(100dvh - 72px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 760px) and (orientation: portrait) {
+  .mobile-orientation-tip {
+    position: fixed;
+    z-index: 17;
+    top: calc(64px + env(safe-area-inset-top));
+    left: 50%;
+    display: block;
+    width: max-content;
+    max-width: calc(100vw - 24px);
+    transform: translateX(-50%);
+    border: 1px solid #8b6f18;
+    border-radius: 999px;
+    padding: 6px 10px;
+    background: rgba(54, 42, 5, .9);
+    color: #ffe47a;
+    font-size: 8px;
+    font-weight: 900;
+    letter-spacing: .03em;
+    text-align: center;
+    text-transform: uppercase;
+    pointer-events: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
