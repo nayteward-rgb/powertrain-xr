@@ -1,0 +1,3152 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#071018">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Medium-Voltage Synchronous Motor Training Simulator</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      forced-color-adjust: none;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+      --background: #071018;
+      --foreground: #eef7fb;
+      --card: #101c25;
+      --card-foreground: #eef7fb;
+      --muted: #263844;
+      --muted-foreground: #a8bac4;
+      --border: #49606d;
+      --primary: #35a9e8;
+      --secondary: #223843;
+      --secondary-foreground: #f5fbfe;
+      --accent: #163b50;
+      --accent-foreground: #e9f8ff;
+      --destructive: #ff514d;
+      --viz-series-1: #2bb5ff;
+      --viz-series-2: #26d179;
+      --viz-series-3: #ffb52e;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--background);
+      color: var(--foreground);
+    }
+
+    * { box-sizing: border-box; }
+
+    html { min-height: 100%; background: var(--background); }
+
+    body {
+      min-height: 100%;
+      margin: 0;
+      forced-color-adjust: none;
+      padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+      background:
+        radial-gradient(circle at 50% -18rem, rgba(43, 181, 255, 0.2), transparent 36rem),
+        linear-gradient(180deg, #071018 0%, #0a141c 52%, #071018 100%);
+      color: var(--foreground);
+    }
+
+    button, select, input { font: inherit; }
+
+    button, select {
+      min-height: 42px;
+      touch-action: manipulation;
+    }
+
+    button:focus-visible, select:focus-visible, input:focus-visible {
+      outline: 3px solid var(--primary);
+      outline-offset: 2px;
+    }
+
+    .viz-controls, .viz-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .form-label {
+      display: grid;
+      gap: 5px;
+      min-width: min(100%, 190px);
+      color: var(--muted-foreground);
+      font-size: 12px;
+      font-weight: 750;
+      letter-spacing: 0.02em;
+    }
+
+    .form-select {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 34px 8px 10px;
+      background: #0b1720;
+      color: var(--foreground);
+    }
+
+    .form-check {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 42px;
+      color: var(--foreground);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .form-check-input { width: 20px; height: 20px; accent-color: var(--primary); }
+
+    .form-range { width: 100%; accent-color: var(--primary); }
+
+    .btn {
+      border: 1px solid #5f7886;
+      border-radius: 6px;
+      padding: 8px 13px;
+      background: #20333e;
+      color: #f2f9fc;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.09), 0 2px 5px rgba(0,0,0,0.28);
+    }
+
+    .btn:hover { background: #2b4553; }
+    .btn:active { transform: translateY(1px); }
+    .btn:disabled { cursor: not-allowed; opacity: 0.46; }
+    .btn-primary { border-color: #55c6ff; background: #0878b3; }
+    .btn-primary:hover { background: #0b8dce; }
+    .btn-ghost { background: transparent; }
+    .btn-link { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+
+    .viz-badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 4px 9px;
+      background: #13232d;
+      color: #f0f8fb;
+      font-size: 12px;
+      font-weight: 850;
+      letter-spacing: 0.04em;
+    }
+
+    .viz-tile {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px;
+      background: var(--card);
+      color: var(--card-foreground);
+    }
+
+    .text-small { font-size: 12px; line-height: 1.45; }
+    .text-muted { color: var(--muted-foreground); }
+
+    @media (max-width: 640px) {
+      body { padding-inline: 8px; }
+      .pfs-trainer-bar > * { flex: 1 1 150px; }
+      .pfs-trainer-bar .form-check { flex-basis: 100%; }
+      .btn { min-height: 46px; }
+    }
+  </style>
+</head>
+<body>
+<div id="pump-field-sim">
+  <div class="viz-controls pfs-trainer-bar" aria-label="Training controls">
+    <label class="form-label" for="pfs-fault">
+      Guided condition
+      <select class="form-select" id="pfs-fault">
+        <option value="none">No fault</option>
+        <option value="bus-loss">4.8 kV bus undervoltage</option>
+        <option value="dc-loss">125 VDC unavailable</option>
+        <option value="52a-fail">52a auxiliary fails to make</option>
+        <option value="far-fail">FAR fails to pick up</option>
+        <option value="41-coil-open">41 field-contactor coil open</option>
+        <option value="pickup-bypass-open">41 pickup bypass contact open</option>
+        <option value="mechanical-interlock">Mechanical interlock blocked</option>
+        <option value="loss-field">40 loss-of-field trip after synchronizing</option>
+        <option value="valve-closed-proof">36-inch valve closed proof missing</option>
+        <option value="sealin-fail">45-second seal-in relay fails</option>
+        <option value="valve-fail-open">Valve fails below 30% run position</option>
+        <option value="valve-fail-close">Valve fails to reach closed limit</option>
+        <option value="ground-fault">Ground-fault trip</option>
+        <option value="overload">Overload trip</option>
+      </select>
+    </label>
+    <label class="form-check form-switch" for="pfs-blind">
+      <input class="form-check-input" type="checkbox" id="pfs-blind">
+      <span class="form-check-label">Blind troubleshooting</span>
+    </label>
+    <button class="btn" type="button" id="pfs-new-scenario">New hidden scenario</button>
+    <button class="btn btn-ghost" type="button" id="pfs-clear-condition">Clear injected condition</button>
+    <label class="form-label" for="pfs-time-scale">
+      45-second valve timing
+      <select class="form-select" id="pfs-time-scale">
+        <option value="1">Real time · 1×</option>
+        <option value="5" selected>Training · 5×</option>
+        <option value="10">Fast training · 10×</option>
+      </select>
+    </label>
+    <label class="form-label" for="pfs-diagnosis">
+      Your diagnosis
+      <select class="form-select" id="pfs-diagnosis">
+        <option value="">Choose after testing</option>
+        <option value="bus-loss">4.8 kV bus undervoltage</option>
+        <option value="dc-loss">Field DC supply lost</option>
+        <option value="52a-fail">Breaker 52a contact failed</option>
+        <option value="far-fail">FAR failed to pick up</option>
+        <option value="41-coil-open">41 coil open</option>
+        <option value="pickup-bypass-open">41 pickup bypass open</option>
+        <option value="mechanical-interlock">41 mechanically blocked</option>
+        <option value="loss-field">Loss of field / device 40</option>
+        <option value="valve-closed-proof">Valve closed proof missing</option>
+        <option value="sealin-fail">45-second seal-in failure</option>
+        <option value="valve-fail-open">Valve fails to reach 30% run position</option>
+        <option value="valve-fail-close">Valve close sequence failure</option>
+        <option value="ground-fault">Ground fault</option>
+        <option value="overload">Overload</option>
+      </select>
+    </label>
+    <button class="btn" type="button" id="pfs-check-diagnosis">Check diagnosis</button>
+    <a class="btn btn-primary btn-link" href="/motor-floor-vr">Enter 3D / Quest motor floor</a>
+    <span class="text-small" id="pfs-diagnosis-result" role="status" aria-live="polite"></span>
+  </div>
+
+  <div class="pfs-status" role="status" aria-live="polite">
+    <span class="viz-badge" id="pfs-stage">Stopped</span>
+    <span><span class="text-muted">Speed</span> <strong id="pfs-speed-value">0%</strong></span>
+    <span><span class="text-muted">Selected rating</span> <strong id="pfs-hp-value">2,500 hp</strong></span>
+    <span><span class="text-muted">A1+ / A2−</span> <strong id="pfs-dc-value">125 VDC</strong></span>
+    <span><span class="text-muted" id="pfs-coil-label">41-L coil</span> <strong id="pfs-coil-value">0 V</strong></span>
+    <span><span class="text-muted">Stator current</span> <strong id="pfs-current-value">0% FLA</strong></span>
+    <span><span class="text-muted">Power factor</span> <strong id="pfs-pf-value">—</strong></span>
+    <span><span class="text-muted">36-inch valve</span> <strong id="pfs-valve-value">CLOSED · 0%</strong></span>
+    <span><span class="text-muted">Valve command</span> <strong id="pfs-valve-command-status">30% · MIN</strong></span>
+    <span><span class="text-muted">K45 seal-in</span> <strong id="pfs-seal-value">READY</strong></span>
+    <span><span class="text-muted">Motor-relay trip latch</span> <strong id="pfs-latch-value">CLEAR</strong></span>
+  </div>
+
+  <div class="pfs-speed-track">
+    <progress id="pfs-progress" max="100" value="0" aria-label="Motor speed as percentage of selected synchronous speed">0%</progress>
+    <div class="pfs-speed-scale text-small text-muted" aria-hidden="true">
+      <span>Stopped</span>
+      <span>FAR pickup region</span>
+      <span>Synchronous</span>
+    </div>
+  </div>
+
+  <div class="pfs-equipment" aria-label="Period-style 4.8 kilovolt breaker, field cubicle, and tandem synchronous motor pump train">
+    <section class="pfs-cubicle pfs-starter" id="pfs-starter-cubicle" data-state="ready" aria-label="4.8 kilovolt synchronous motor breaker cubicle">
+      <div class="pfs-cabinet-header">
+        <span>4.8 kV breaker &amp; motor control</span>
+        <span id="pfs-main-state">52-L open</span>
+      </div>
+      <div class="pfs-meter-row pfs-breaker-meters">
+        <div class="pfs-meter" id="pfs-bus-meter" style="--pfs-needle:34deg" role="img" aria-label="Bus voltage 4.8 kilovolts">
+          <span class="pfs-meter-arc" aria-hidden="true"></span>
+          <span class="pfs-meter-needle" aria-hidden="true"></span>
+          <span class="pfs-meter-center" aria-hidden="true"></span>
+          <span class="pfs-meter-reading" id="pfs-bus-meter-reading">4.8</span>
+          <span class="pfs-meter-label">Bus kV</span>
+        </div>
+        <div class="pfs-meter" id="pfs-amp-meter" style="--pfs-needle:-42deg" role="img" aria-label="Stator current zero percent full load amperes">
+          <span class="pfs-meter-arc" aria-hidden="true"></span>
+          <span class="pfs-meter-needle" aria-hidden="true"></span>
+          <span class="pfs-meter-center" aria-hidden="true"></span>
+          <span class="pfs-meter-reading" id="pfs-amp-meter-reading">0%</span>
+          <span class="pfs-meter-label">Stator A · %FLA</span>
+        </div>
+        <div class="pfs-meter" id="pfs-pf-meter" style="--pfs-needle:-42deg" role="img" aria-label="Power factor not energized">
+          <span class="pfs-meter-arc" aria-hidden="true"></span>
+          <span class="pfs-meter-needle" aria-hidden="true"></span>
+          <span class="pfs-meter-center" aria-hidden="true"></span>
+          <span class="pfs-meter-reading" id="pfs-pf-meter-reading">—</span>
+          <span class="pfs-meter-label">Power factor</span>
+        </div>
+      </div>
+      <div class="pfs-starter-interior">
+        <div class="pfs-starter-topline">
+          <div class="pfs-disconnect-handle" id="pfs-disconnect-handle" data-state="closed" aria-label="Drawout breaker connected">
+            <span>52</span>
+            <span class="pfs-handle-grip" aria-hidden="true"></span>
+          </div>
+          <div class="pfs-old-plate">
+            <span>4800 V · 3Ø · 60 Hz</span>
+            <span class="text-small text-muted">Drawout air-magnetic breaker · selected circuit</span>
+          </div>
+        </div>
+        <div class="pfs-phase-bank" aria-label="Three-pole medium-voltage breaker contacts">
+          <div class="pfs-phase" aria-label="Phase L1">
+            <span class="pfs-phase-label">L1</span>
+            <span class="pfs-arc-chute" aria-hidden="true"></span>
+            <span class="pfs-fixed-contact" aria-hidden="true"></span>
+            <span class="pfs-moving-contact" aria-hidden="true"></span>
+            <span class="pfs-load-stab" aria-hidden="true"></span>
+          </div>
+          <div class="pfs-phase" aria-label="Phase L2">
+            <span class="pfs-phase-label">L2</span>
+            <span class="pfs-arc-chute" aria-hidden="true"></span>
+            <span class="pfs-fixed-contact" aria-hidden="true"></span>
+            <span class="pfs-moving-contact" aria-hidden="true"></span>
+            <span class="pfs-load-stab" aria-hidden="true"></span>
+          </div>
+          <div class="pfs-phase" aria-label="Phase L3">
+            <span class="pfs-phase-label">L3</span>
+            <span class="pfs-arc-chute" aria-hidden="true"></span>
+            <span class="pfs-fixed-contact" aria-hidden="true"></span>
+            <span class="pfs-moving-contact" aria-hidden="true"></span>
+            <span class="pfs-load-stab" aria-hidden="true"></span>
+          </div>
+        </div>
+        <div class="pfs-closing-magnet" id="pfs-closing-magnet" data-state="inactive">
+          <span class="pfs-coil-symbol" aria-hidden="true"></span>
+          <span><strong>52-C</strong><small> closing mechanism / latch</small></span>
+        </div>
+        <div class="pfs-relay-shelf" aria-label="Motor-relay breaker and process inputs">
+          <span id="pfs-starter-ol" data-state="healthy"><strong>RELAY TRIP</strong><small>output healthy</small></span>
+          <span id="pfs-starter-gf" data-state="healthy"><strong>RELAY TARGET</strong><small>trip targets clear</small></span>
+          <span id="pfs-starter-uv" data-state="healthy"><strong>VLV-CLS</strong><small>closed proof</small></span>
+          <span id="pfs-starter-42a" data-state="open"><strong id="pfs-starter-42a-label">52a-L</strong><small>open</small></span>
+        </div>
+        <div class="pfs-local-controls" aria-label="Breaker door controls">
+          <label class="form-label" for="pfs-speed">
+            MOTOR SELECT
+            <select class="form-select" id="pfs-speed">
+              <option value="L">LOW · 2,500 hp</option>
+              <option value="H">HIGH · 5,000 hp</option>
+            </select>
+          </label>
+          <div class="pfs-pilot-lights" aria-label="Pilot lights">
+            <span id="pfs-light-ready" data-state="on"><i aria-hidden="true"></i>READY</span>
+            <span id="pfs-light-run" data-state="off"><i aria-hidden="true"></i>RUN</span>
+            <span id="pfs-light-field" data-state="off"><i aria-hidden="true"></i>FIELD</span>
+            <span id="pfs-light-trip" data-state="off"><i aria-hidden="true"></i>TRIP</span>
+          </div>
+          <div class="viz-row pfs-actions" aria-label="Local run controls">
+            <button class="btn btn-primary" type="button" id="pfs-start">START / CLOSE 52</button>
+            <button class="btn" type="button" id="pfs-stop">NORMAL STOP</button>
+            <button class="btn btn-ghost" type="button" id="pfs-emergency-trip">EMERGENCY TRIP 52</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="pfs-cubicle pfs-field-cubicle" id="pfs-field-cubicle" data-state="ready" aria-label="DC excitation and field application cubicle">
+      <div class="pfs-cabinet-header">
+        <span>DC excitation &amp; field cubicle</span>
+        <span id="pfs-field-state">Discharge connected</span>
+      </div>
+      <div class="pfs-meter-row">
+        <div class="pfs-meter" id="pfs-dc-meter" style="--pfs-needle:-42deg" role="img" aria-label="Exciter voltage 125 volts DC">
+          <span class="pfs-meter-arc" aria-hidden="true"></span>
+          <span class="pfs-meter-needle" aria-hidden="true"></span>
+          <span class="pfs-meter-center" aria-hidden="true"></span>
+          <span class="pfs-meter-reading" id="pfs-dc-meter-reading">125</span>
+          <span class="pfs-meter-label">DC volts</span>
+        </div>
+        <div class="pfs-meter" id="pfs-field-meter" style="--pfs-needle:-42deg" role="img" aria-label="Field current zero percent of modeled running value">
+          <span class="pfs-meter-arc" aria-hidden="true"></span>
+          <span class="pfs-meter-needle" aria-hidden="true"></span>
+          <span class="pfs-meter-center" aria-hidden="true"></span>
+          <span class="pfs-meter-reading" id="pfs-field-meter-reading">0%</span>
+          <span class="pfs-meter-label">Field</span>
+        </div>
+      </div>
+      <div class="pfs-field-channels" aria-label="Mirrored low- and high-speed field circuits">
+        <div class="pfs-field-channel" id="pfs-channel-L" data-state="selected">
+          <div class="pfs-channel-heading"><span>LOW</span><span>2,500 hp</span></div>
+          <div class="pfs-old-relay" id="pfs-physical-56-L" data-state="idle"><strong>FAR-L</strong><small>slip-frequency relay</small><span class="pfs-relay-armature" aria-hidden="true"></span></div>
+          <div class="pfs-old-contactor" id="pfs-physical-41-L" data-state="open"><strong>41-L</strong><small>field contactor</small><span class="pfs-contactor-bar" aria-hidden="true"></span></div>
+          <div class="pfs-resistor-symbol"><span aria-hidden="true">////</span><small>Field resistor L</small></div>
+        </div>
+        <div class="pfs-interlock" id="pfs-interlock" data-state="healthy" aria-label="High low mechanical interlock healthy">
+          <span aria-hidden="true">⇆</span><small>Mechanical<br>interlock</small>
+        </div>
+        <div class="pfs-field-channel" id="pfs-channel-H" data-state="locked">
+          <div class="pfs-channel-heading"><span>HIGH</span><span>5,000 hp</span></div>
+          <div class="pfs-old-relay" id="pfs-physical-56-H" data-state="idle"><strong>FAR-H</strong><small>slip-frequency relay</small><span class="pfs-relay-armature" aria-hidden="true"></span></div>
+          <div class="pfs-old-contactor" id="pfs-physical-41-H" data-state="open"><strong>41-H</strong><small>field contactor</small><span class="pfs-contactor-bar" aria-hidden="true"></span></div>
+          <div class="pfs-resistor-symbol"><span aria-hidden="true">////</span><small>Field resistor H</small></div>
+        </div>
+      </div>
+      <div class="pfs-field-lower">
+        <div class="pfs-rheostat" aria-label="Exciter field rheostat control">
+          <span class="pfs-rheostat-knob" aria-hidden="true"></span>
+          <label class="form-label" for="pfs-field-rheostat">
+            FIELD RHEOSTAT · <span id="pfs-rheostat-value">NORMAL</span>
+            <input class="form-range" id="pfs-field-rheostat" type="range" min="0" max="100" value="50" aria-label="Exciter field rheostat">
+          </label>
+        </div>
+        <div class="pfs-discharge-bank" id="pfs-discharge-bank" data-state="connected">
+          <span class="pfs-resistor-stack" aria-hidden="true"></span>
+          <small>Field discharge resistor · across rotor until 41 closes</small>
+        </div>
+      </div>
+    </section>
+
+    <section class="pfs-869-panel" id="pfs-869-panel" data-state="normal" aria-label="Generic motor protection relay front panel">
+      <div class="pfs-869-bezel">
+        <div class="pfs-869-brand">
+          <span class="pfs-ge-mark" aria-hidden="true">MPR</span>
+          <span><strong>Motor Relay</strong><small>Protection &amp; Control</small></span>
+        </div>
+        <div class="pfs-869-led-bank" aria-label="Motor-relay front-panel LED indications">
+          <span id="pfs-led-inservice" data-led="green"><i aria-hidden="true"></i><b>IN SERVICE</b></span>
+          <span id="pfs-led-pickup" data-led="off"><i aria-hidden="true"></i><b>PICKUP</b></span>
+          <span id="pfs-led-alarm" data-led="off"><i aria-hidden="true"></i><b>ALARM</b></span>
+          <span id="pfs-led-trip" data-led="off"><i aria-hidden="true"></i><b>TRIP</b></span>
+          <span id="pfs-led-52" data-led="off"><i aria-hidden="true"></i><b>52 CLOSED</b></span>
+          <span id="pfs-led-low" data-led="green"><i aria-hidden="true"></i><b>LOW SELECTED</b></span>
+          <span id="pfs-led-high" data-led="off"><i aria-hidden="true"></i><b>HIGH SELECTED</b></span>
+          <span id="pfs-led-far" data-led="off"><i aria-hidden="true"></i><b>FAR PICKED</b></span>
+          <span id="pfs-led-field" data-led="off"><i aria-hidden="true"></i><b>FIELD APPLIED</b></span>
+          <span id="pfs-led-valve-closed" data-led="green"><i aria-hidden="true"></i><b>VALVE CLOSED</b></span>
+          <span id="pfs-led-valve-open" data-led="off"><i aria-hidden="true"></i><b>VALVE OPEN</b></span>
+          <span id="pfs-led-k45" data-led="off"><i aria-hidden="true"></i><b>K45 SEAL-IN</b></span>
+          <span id="pfs-led-bearing" data-led="off"><i aria-hidden="true"></i><b>BEARING TEMP</b></span>
+          <span id="pfs-led-vibration" data-led="green"><i aria-hidden="true"></i><b>VIB TRIP · 0.20</b></span>
+        </div>
+        <div class="pfs-869-gcp" id="pfs-869-gcp" data-state="normal" aria-live="polite">
+          <div class="pfs-869-screen-head"><span id="pfs-869-page-title">MOTOR STATUS</span><span id="pfs-869-clock">00:00.0</span></div>
+          <div class="pfs-869-screen-body">
+            <div><span id="pfs-869-line1-label">STATE</span><strong id="pfs-869-line1-value">STOPPED</strong></div>
+            <div><span id="pfs-869-line2-label">BREAKER</span><strong id="pfs-869-line2-value">52-L OPEN</strong></div>
+            <div><span id="pfs-869-line3-label">FIELD</span><strong id="pfs-869-line3-value">DISCHARGE</strong></div>
+            <div><span id="pfs-869-line4-label">VALVE</span><strong id="pfs-869-line4-value">CLOSED · 0%</strong></div>
+            <div><span id="pfs-869-line5-label">K45</span><strong id="pfs-869-line5-value">READY</strong></div>
+            <div class="pfs-869-message"><span id="pfs-869-line6-label">MESSAGE</span><strong id="pfs-869-line6-value">READY TO START</strong></div>
+          </div>
+          <div class="pfs-869-softkeys" aria-hidden="true"><span>METER</span><span>STATUS</span><span>EVENTS</span><span>MORE</span></div>
+        </div>
+        <div class="pfs-869-nav" aria-label="Motor-relay navigation keys">
+          <button class="btn" type="button" data-screen-nav="-1" aria-label="Previous motor-relay display page">▲</button>
+          <div><button class="btn" type="button" data-screen-nav="-1" aria-label="Previous motor-relay display page">◀</button><button class="btn" type="button" data-screen-nav="1" aria-label="Next motor-relay display page">▶</button></div>
+          <button class="btn" type="button" data-screen-nav="1" aria-label="Next motor-relay display page">▼</button>
+          <span class="text-small">USB</span>
+        </div>
+        <div class="pfs-869-pushbuttons" aria-label="Motor-relay programmable pushbuttons">
+          <button class="btn" type="button" id="pfs-ack"><i aria-hidden="true"></i>ACK ALARM</button>
+          <button class="btn" type="button" id="pfs-reset"><i aria-hidden="true"></i>RESET RELAY TRIPS</button>
+          <button class="btn" type="button" id="pfs-869-screen"><i aria-hidden="true"></i>NEXT SCREEN</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="pfs-machine-panel" id="pfs-machine" data-state="inactive" data-field="off" data-selected="L" aria-label="Two synchronous motors on one shaft driving a 30 million gallon per day pump">
+      <div class="pfs-machine-heading">
+        <span>Representative legacy synchronous motor &amp; pump train</span>
+        <strong id="pfs-machine-hp">2,500 hp low</strong>
+      </div>
+      <svg class="pfs-machine-svg" viewBox="0 0 780 315" role="img" aria-labelledby="pfs-machine-title pfs-machine-desc">
+        <title id="pfs-machine-title">Dual synchronous motor, pump, and 36-inch Venturi discharge valve</title>
+        <desc id="pfs-machine-desc">Low- and high-speed synchronous motor sections share one shaft with a centrifugal pump. Five bearing RTD locations, motor and pump vibration points, and a 36-inch actuated Venturi discharge valve are labeled.</desc>
+        <path class="pfs-base" d="M16 226H586M38 226v13h44v-13m152 0v13h48v-13m126 0v13h42v-13m78 0v13h38v-13" />
+        <path class="pfs-shaft pfs-common-shaft" d="M56 150H496" />
+
+        <g class="pfs-motor-shape pfs-motor-low">
+          <text class="pfs-machine-label" x="102" y="63" text-anchor="middle">LOW · 2,500 HP</text>
+          <path class="pfs-motor-shell" d="M32 100Q32 82 51 82h111q20 0 20 18v84q0 18-20 18H51q-19 0-19-18Z" />
+          <path class="pfs-endbell" d="M32 104Q17 116 17 143t15 39M182 104q15 12 15 39t-15 39" />
+          <path class="pfs-rib" d="M55 87v110m22-110v110m22-110v110m22-110v110m22-110v110" />
+          <circle class="pfs-rotor" cx="106" cy="150" r="29" />
+          <g class="pfs-rotor-detail">
+            <path d="M106 124v52M80 150h52M88 132l36 36M124 132l-36 36" />
+          </g>
+          <path class="pfs-field-winding" d="M80 150q26-31 52 0q-26 31-52 0Z" />
+          <g class="pfs-sliprings">
+            <path d="M159 127v36m7-36v36m7-36v36" />
+            <path class="pfs-brush" d="M155 121h22m-22 48h22" />
+          </g>
+          <path class="pfs-coupling" d="M190 133h22v24h-22m7-24v24m9-24v24" />
+        </g>
+
+        <g class="pfs-motor-shape pfs-motor-high">
+          <text class="pfs-machine-label" x="318" y="39" text-anchor="middle">HIGH · 5,000 HP</text>
+          <path class="pfs-motor-shell" d="M217 81Q217 58 241 58h154q25 0 25 23v105q0 23-25 23H241q-24 0-24-23Z" />
+          <path class="pfs-endbell" d="M217 86q-19 14-19 58t19 58M420 86q19 14 19 58t-19 58" />
+          <path class="pfs-rib" d="M248 64v139m27-139v139m27-139v139m27-139v139m27-139v139m27-139v139" />
+          <circle class="pfs-rotor" cx="318" cy="150" r="38" />
+          <g class="pfs-rotor-detail">
+            <path d="M318 116v68M284 150h68M294 126l48 48M342 126l-48 48" />
+          </g>
+          <path class="pfs-field-winding" d="M284 150q34-43 68 0q-34 43-68 0Z" />
+          <g class="pfs-sliprings">
+            <path d="M392 122v46m8-46v46m8-46v46" />
+            <path class="pfs-brush" d="M388 115h24m-24 60h24" />
+          </g>
+          <path class="pfs-coupling" d="M431 131h25v28h-25m8-28v28m10-28v28" />
+        </g>
+
+        <g class="pfs-pump-shape">
+          <text class="pfs-machine-label" x="503" y="78" text-anchor="middle">30 MGD PUMP</text>
+          <path class="pfs-pump-volute" d="M491 104c39 0 59 22 54 53c-4 30-32 50-61 41c-28-9-31-42-10-59c16-13 37-6 40 9c4 14-9 26-23 21" />
+          <circle class="pfs-impeller" cx="492" cy="152" r="20" />
+          <g class="pfs-impeller-detail">
+            <path d="M492 132v40M472 152h40M478 138l28 28M506 138l-28 28" />
+          </g>
+          <path class="pfs-suction" d="M492 172v49" />
+          <path class="pfs-discharge" d="M526 119V91H754" />
+        </g>
+
+        <g class="pfs-valve-shape" id="pfs-valve-shape" data-state="closed">
+          <text class="pfs-machine-label" x="655" y="31" text-anchor="middle">36-IN VENTURI VALVE</text>
+          <path class="pfs-valve-body" d="M603 71h25q27-18 54 0h25v40h-25q-27 18-54 0h-25Z" />
+          <path class="pfs-valve-passage" d="M609 81h22q24 19 48 0h22M609 101h22q24-19 48 0h22" />
+          <path class="pfs-valve-plug" id="pfs-valve-plug" d="M636 91h38" />
+          <path class="pfs-valve-stem" d="M655 71V51" />
+          <rect class="pfs-valve-actuator" x="628" y="38" width="54" height="18" rx="4" />
+          <text class="pfs-valve-position" id="pfs-valve-svg-value" x="655" y="132" text-anchor="middle">CLOSED · 0%</text>
+          <g class="pfs-limit-lamp" id="pfs-svg-vlv-closed" data-state="on"><circle cx="580" cy="154" r="6"/><text x="590" y="158">CLOSED LS</text></g>
+          <g class="pfs-limit-lamp" id="pfs-svg-vlv-open" data-state="off"><circle cx="690" cy="154" r="6"/><text x="700" y="158">OPEN LS</text></g>
+          <path class="pfs-flow-arrow" d="M738 91l-12-8v16Z" />
+        </g>
+
+        <g class="pfs-bearing-marker" id="pfs-marker-mob" data-state="normal"><circle cx="28" cy="208" r="7"/><text x="28" y="270" text-anchor="middle">MTR OB</text></g>
+        <g class="pfs-bearing-marker" id="pfs-marker-mib" data-state="normal"><circle cx="421" cy="212" r="7"/><text x="421" y="270" text-anchor="middle">MTR IB</text></g>
+        <g class="pfs-bearing-marker" id="pfs-marker-pib" data-state="normal"><circle cx="462" cy="211" r="7"/><path class="pfs-bearing-leader" d="M462 220l12 8"/><text x="478" y="239">PUMP IB</text></g>
+        <g class="pfs-bearing-marker" id="pfs-marker-pob" data-state="normal"><circle cx="548" cy="210" r="7"/><text x="548" y="270" text-anchor="middle">PUMP OB</text></g>
+        <g class="pfs-bearing-marker" id="pfs-marker-thrust" data-state="normal"><circle cx="565" cy="176" r="7"/><text x="582" y="180">THRUST</text></g>
+        <g class="pfs-vibration-marker" id="pfs-marker-motor-vib" data-state="normal"><path d="M198 226q8-14 16 0t16 0t16 0"/><text x="222" y="250" text-anchor="middle">MOTOR VIB</text></g>
+        <g class="pfs-vibration-marker" id="pfs-marker-pump-vib" data-state="normal"><path d="M474 270q8-14 16 0t16 0t16 0"/><text x="498" y="298" text-anchor="middle">PUMP VIB</text></g>
+      </svg>
+      <div class="pfs-condition-panel" aria-label="Valve position, bearing temperature, and vibration simulation">
+        <div class="pfs-condition-controls viz-controls">
+          <label class="form-label pfs-wide-control pfs-valve-command-control" for="pfs-valve-command">
+            Discharge valve position command · <strong id="pfs-valve-command-value">30%</strong>
+            <input class="form-range" id="pfs-valve-command" type="range" min="30" max="100" step="1" value="30">
+            <span class="text-small text-muted">Running range 30–100%. NORMAL STOP overrides the positioner and closes the valve to 0%.</span>
+          </label>
+          <label class="form-label" for="pfs-bearing-select">
+            Bearing RTD to test
+            <select class="form-select" id="pfs-bearing-select">
+              <option value="mob">Motor outboard</option>
+              <option value="mib">Motor inboard</option>
+              <option value="pib">Pump inboard</option>
+              <option value="pob">Pump outboard</option>
+              <option value="thrust">Thrust bearing</option>
+            </select>
+          </label>
+          <label class="form-label pfs-wide-control" for="pfs-bearing-temp">
+            Injected RTD temperature · <strong id="pfs-bearing-temp-value">52°C</strong>
+            <input class="form-range" id="pfs-bearing-temp" type="range" min="35" max="100" value="52">
+          </label>
+          <span class="pfs-threshold-legend"><i data-level="normal"></i>Normal &lt;75°C <i data-level="alarm"></i>Alarm 75–84°C <i data-level="trip"></i>Latched trip ≥85°C</span>
+        </div>
+        <div class="pfs-bearing-grid" aria-label="Five bearing RTD readings">
+          <button class="btn viz-tile pfs-bearing-tile" type="button" data-bearing="mob" data-state="normal" aria-pressed="true"><strong>Motor OB</strong><span id="pfs-temp-mob">52°C</span><small id="pfs-status-mob">NORMAL</small></button>
+          <button class="btn viz-tile pfs-bearing-tile" type="button" data-bearing="mib" data-state="normal" aria-pressed="false"><strong>Motor IB</strong><span id="pfs-temp-mib">54°C</span><small id="pfs-status-mib">NORMAL</small></button>
+          <button class="btn viz-tile pfs-bearing-tile" type="button" data-bearing="pib" data-state="normal" aria-pressed="false"><strong>Pump IB</strong><span id="pfs-temp-pib">56°C</span><small id="pfs-status-pib">NORMAL</small></button>
+          <button class="btn viz-tile pfs-bearing-tile" type="button" data-bearing="pob" data-state="normal" aria-pressed="false"><strong>Pump OB</strong><span id="pfs-temp-pob">55°C</span><small id="pfs-status-pob">NORMAL</small></button>
+          <button class="btn viz-tile pfs-bearing-tile" type="button" data-bearing="thrust" data-state="normal" aria-pressed="false"><strong>Thrust</strong><span id="pfs-temp-thrust">58°C</span><small id="pfs-status-thrust">NORMAL</small></button>
+        </div>
+        <div class="pfs-vibration-grid" aria-label="Motor and pump vibration trip simulation">
+          <label class="form-label pfs-vibration-control" id="pfs-motor-vibration-control" data-state="normal" for="pfs-motor-vibration">Motor vibration · <strong id="pfs-motor-vibration-value">0.12 in/s RMS</strong><input class="form-range" id="pfs-motor-vibration" type="range" min="0" max="1" step="0.01" value="0.12"><span class="text-small">Motor-relay trip at ≥0.20 in/s RMS</span></label>
+          <label class="form-label pfs-vibration-control" id="pfs-pump-vibration-control" data-state="normal" for="pfs-pump-vibration">Pump vibration · <strong id="pfs-pump-vibration-value">0.15 in/s RMS</strong><input class="form-range" id="pfs-pump-vibration" type="range" min="0" max="1" step="0.01" value="0.15"><span class="text-small">Motor-relay trip at ≥0.20 in/s RMS</span></label>
+          <span class="text-small text-muted">Either channel at 0.20 in/s RMS or higher trips the motor relay and latches its trip target until the input is reduced and RESET RELAY TRIPS is pressed.</span>
+        </div>
+      </div>
+      <div class="pfs-machine-data">
+        <span><strong>4.8 kV</strong><small>stator supply</small></span>
+        <span><strong>30 MGD</strong><small>pump rating</small></span>
+        <span><strong id="pfs-rotor-field-state">Both on discharge</strong><small>selected rotor field</small></span>
+        <span><strong id="pfs-valve-proof-state">CLOSED PROOF MADE</strong><small>36-inch valve limits</small></span>
+      </div>
+      <div class="pfs-pump-status text-small" id="pfs-pump-status">Pump stopped · rated capacity shown, actual flow not modeled</div>
+    </section>
+  </div>
+
+  <div class="pfs-trace" aria-label="Active control path">
+    <div class="pfs-trace-step" id="pfs-node-supply" data-state="ready"><span>4.8 kV bus</span><span class="pfs-node-value">Available</span></div>
+    <span class="pfs-trace-arrow" aria-hidden="true">→</span>
+    <div class="pfs-trace-step" id="pfs-node-permissives" data-state="active"><span>27 · 50/51 · 50G</span><span class="pfs-node-value">Healthy</span></div>
+    <span class="pfs-trace-arrow" aria-hidden="true">→</span>
+    <div class="pfs-trace-step" id="pfs-node-main" data-state="inactive"><span id="pfs-main-label">52-L / 52a-L</span><span class="pfs-node-value">Open</span></div>
+    <span class="pfs-trace-arrow" aria-hidden="true">→</span>
+    <div class="pfs-trace-step" id="pfs-node-stator" data-state="inactive"><span>Stator + damper cage</span><span class="pfs-node-value">De-energized</span></div>
+    <span class="pfs-trace-divider" aria-hidden="true">│</span>
+    <div class="pfs-trace-step" id="pfs-node-dc" data-state="ready"><span>125 VDC</span><span class="pfs-node-value">Available</span></div>
+    <span class="pfs-trace-arrow" aria-hidden="true">→</span>
+    <div class="pfs-trace-step" id="pfs-node-56" data-state="inactive"><span id="pfs-56-label">FAR-L</span><span class="pfs-node-value">Waiting</span></div>
+    <span class="pfs-trace-arrow" aria-hidden="true">→</span>
+    <div class="pfs-trace-step" id="pfs-node-41" data-state="inactive"><span id="pfs-41-label">41-L</span><span class="pfs-node-value">Open</span></div>
+    <span class="pfs-trace-arrow" aria-hidden="true">→</span>
+    <div class="pfs-trace-step" id="pfs-node-field" data-state="inactive"><span>Rotor field</span><span class="pfs-node-value">Discharge</span></div>
+    <span class="pfs-trace-divider" aria-hidden="true">│</span>
+    <div class="pfs-trace-step" id="pfs-node-valve-closed" data-state="active"><span>VLV-CLS</span><span class="pfs-node-value">Closed proof made</span></div>
+    <span class="pfs-trace-arrow" aria-hidden="true">→</span>
+    <div class="pfs-trace-step" id="pfs-node-seal" data-state="inactive"><span>K45 seal-in</span><span class="pfs-node-value">Ready</span></div>
+    <span class="pfs-trace-arrow" aria-hidden="true">→</span>
+    <div class="pfs-trace-step" id="pfs-node-valve-open" data-state="inactive"><span>VLV-POS ≥30%</span><span class="pfs-node-value">Run position not made</span></div>
+  </div>
+
+  <div class="pfs-diagnostic" id="pfs-diagnostic">
+    Ready. Select LOW or HIGH at the breaker cubicle and press START / CLOSE 52.
+  </div>
+  <div class="text-small text-muted pfs-assumption">
+    Representative training sequence: valve-closed proof permits the start and initiates K45; K45 seals the motor control circuit for up to 45 seconds while the illustrative discharge valve leaves the closed limit; valve position at or above 30% carries the running permissive. The operator position command is adjustable from 30–100%, while NORMAL STOP overrides the positioner and closes the valve to 0% before opening 52. The five bearing RTDs use illustrative 75°C alarm and 85°C latched-trip setpoints. Motor and pump vibration each trip at 0.20 in/s RMS. Protective trips latch in the motor relay; no separate 86 relay is modeled in the trip path. Equipment geometry, identifiers, ratings, relay programming, FAR pickup, breaker type, and timing are illustrative. Training use only—not an approved switching, settings, or as-built document.
+  </div>
+</div>
+
+<style>
+  #pump-field-sim {
+    --pfs-gap: 12px;
+    color: var(--foreground);
+    display: grid;
+    gap: 16px;
+    width: 100%;
+  }
+
+  #pump-field-sim .pfs-actions {
+    align-self: end;
+  }
+
+  #pump-field-sim .pfs-trainer-bar {
+    align-items: end;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px;
+  }
+
+  #pump-field-sim #pfs-diagnosis-result {
+    max-width: 24ch;
+  }
+
+  #pump-field-sim .pfs-status {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 18px;
+  }
+
+  #pump-field-sim strong {
+    font-weight: 500;
+  }
+
+  #pump-field-sim .pfs-speed-track {
+    display: grid;
+    gap: 5px;
+  }
+
+  #pump-field-sim progress {
+    accent-color: var(--viz-series-1);
+    height: 12px;
+    width: 100%;
+  }
+
+  #pump-field-sim progress::-webkit-progress-bar {
+    background: var(--muted);
+    border-radius: 999px;
+  }
+
+  #pump-field-sim progress::-webkit-progress-value {
+    background: var(--viz-series-1);
+    border-radius: 999px;
+  }
+
+  #pump-field-sim progress::-moz-progress-bar {
+    background: var(--viz-series-1);
+    border-radius: 999px;
+  }
+
+  #pump-field-sim .pfs-speed-scale {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+
+  #pump-field-sim .pfs-speed-scale span:nth-child(2) {
+    text-align: center;
+  }
+
+  #pump-field-sim .pfs-speed-scale span:last-child {
+    text-align: right;
+  }
+
+  #pump-field-sim .pfs-equipment {
+    align-items: stretch;
+    display: grid;
+    gap: 12px;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  }
+
+  #pump-field-sim .pfs-cubicle,
+  #pump-field-sim .pfs-869-panel,
+  #pump-field-sim .pfs-machine-panel {
+    background: rgb(19, 31, 41);
+    border: 2px solid var(--border);
+    border-radius: 7px;
+    box-shadow: inset 0 0 0 3px rgba(73, 96, 109, 0.18);
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  #pump-field-sim .pfs-machine-panel {
+    grid-column: 1 / -1;
+  }
+
+  #pump-field-sim .pfs-869-panel {
+    background: rgb(38, 50, 58);
+    grid-column: 1 / -1;
+  }
+
+  #pump-field-sim .pfs-cabinet-header,
+  #pump-field-sim .pfs-machine-heading {
+    align-items: center;
+    background: var(--secondary);
+    color: var(--secondary-foreground);
+    display: flex;
+    flex-wrap: wrap;
+    font-weight: 500;
+    gap: 6px 12px;
+    justify-content: space-between;
+    padding: 9px 11px;
+  }
+
+  #pump-field-sim .pfs-starter .pfs-cabinet-header {
+    background: rgb(36, 86, 112);
+    border-bottom: 4px solid var(--viz-series-1);
+  }
+
+  #pump-field-sim .pfs-field-cubicle .pfs-cabinet-header {
+    background: rgb(87, 86, 62);
+    border-bottom: 4px solid var(--viz-series-3);
+  }
+
+  #pump-field-sim .pfs-machine-heading {
+    background: rgb(35, 91, 79);
+    border-bottom: 4px solid var(--viz-series-2);
+  }
+
+  #pump-field-sim .pfs-cubicle[data-state="active"],
+  #pump-field-sim .pfs-machine-panel[data-state="active"],
+  #pump-field-sim .pfs-machine-panel[data-state="field"] {
+    border-color: var(--viz-series-1);
+  }
+
+  #pump-field-sim .pfs-cubicle[data-state="fault"],
+  #pump-field-sim .pfs-machine-panel[data-state="fault"] {
+    border-color: var(--destructive);
+  }
+
+  #pump-field-sim .pfs-starter-interior {
+    display: grid;
+    gap: 10px;
+    padding: 11px;
+  }
+
+  #pump-field-sim .pfs-starter-topline {
+    align-items: center;
+    display: grid;
+    gap: 10px;
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  #pump-field-sim .pfs-disconnect-handle {
+    align-items: center;
+    background: rgba(38, 56, 68, 0.72);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    display: grid;
+    gap: 4px;
+    justify-items: center;
+    padding: 6px;
+  }
+
+  #pump-field-sim .pfs-handle-grip {
+    background: var(--foreground);
+    border-radius: 999px;
+    display: block;
+    height: 28px;
+    transform: rotate(-28deg);
+    width: 7px;
+  }
+
+  #pump-field-sim .pfs-old-plate {
+    border: 1px solid var(--border);
+    display: grid;
+    gap: 2px;
+    padding: 7px 9px;
+  }
+
+  #pump-field-sim .pfs-phase-bank {
+    background: rgba(38, 56, 68, 0.44);
+    border: 1px solid var(--border);
+    display: grid;
+    gap: 8px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    padding: 9px;
+  }
+
+  #pump-field-sim .pfs-phase {
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    min-height: 166px;
+    position: relative;
+  }
+
+  #pump-field-sim .pfs-phase::before,
+  #pump-field-sim .pfs-phase::after {
+    background: var(--border);
+    content: "";
+    display: block;
+    height: 18px;
+    width: 3px;
+  }
+
+  #pump-field-sim .pfs-phase-label {
+    font-weight: 500;
+    margin-bottom: 3px;
+  }
+
+  #pump-field-sim .pfs-arc-chute {
+    background: repeating-linear-gradient(0deg, var(--border) 0 2px, transparent 2px 6px);
+    border: 2px solid var(--border);
+    border-radius: 3px;
+    display: block;
+    height: 42px;
+    width: 28px;
+  }
+
+  #pump-field-sim .pfs-fixed-contact {
+    background: var(--foreground);
+    display: block;
+    height: 4px;
+    margin-top: 12px;
+    width: 32px;
+  }
+
+  #pump-field-sim .pfs-moving-contact {
+    background: var(--foreground);
+    display: block;
+    height: 4px;
+    margin: 14px 0 6px;
+    transform: translateX(3px) rotate(-22deg);
+    transform-origin: left center;
+    transition: transform 180ms ease;
+    width: 32px;
+  }
+
+  #pump-field-sim .pfs-load-stab {
+    background: var(--border);
+    display: block;
+    height: 25px;
+    width: 3px;
+  }
+
+  #pump-field-sim .pfs-starter[data-state="active"] .pfs-phase::before,
+  #pump-field-sim .pfs-starter[data-state="active"] .pfs-phase::after,
+  #pump-field-sim .pfs-starter[data-state="active"] .pfs-load-stab {
+    background: var(--viz-series-1);
+  }
+
+  #pump-field-sim .pfs-starter[data-state="active"] .pfs-moving-contact {
+    background: var(--viz-series-1);
+    transform: translateX(0) rotate(0deg);
+  }
+
+  #pump-field-sim .pfs-closing-magnet {
+    align-items: center;
+    border: 1px solid var(--border);
+    display: grid;
+    gap: 8px;
+    grid-template-columns: auto minmax(0, 1fr);
+    padding: 7px 9px;
+  }
+
+  #pump-field-sim .pfs-closing-magnet small {
+    color: var(--muted-foreground);
+  }
+
+  #pump-field-sim .pfs-coil-symbol {
+    border: 4px double var(--border);
+    border-radius: 5px;
+    display: block;
+    height: 30px;
+    width: 38px;
+  }
+
+  #pump-field-sim .pfs-closing-magnet[data-state="active"] {
+    background: rgba(43, 181, 255, 0.14);
+    border-color: var(--viz-series-1);
+  }
+
+  #pump-field-sim .pfs-closing-magnet[data-state="active"] .pfs-coil-symbol {
+    border-color: var(--viz-series-1);
+  }
+
+  #pump-field-sim .pfs-relay-shelf {
+    display: grid;
+    gap: 6px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  #pump-field-sim .pfs-relay-shelf > span {
+    align-items: center;
+    border: 1px solid var(--border);
+    display: grid;
+    gap: 2px;
+    justify-items: center;
+    min-width: 0;
+    padding: 6px 3px;
+    text-align: center;
+  }
+
+  #pump-field-sim .pfs-relay-shelf small {
+    color: var(--muted-foreground);
+    overflow-wrap: anywhere;
+  }
+
+  #pump-field-sim .pfs-relay-shelf > span[data-state="closed"] {
+    background: rgba(43, 181, 255, 0.14);
+    border-color: var(--viz-series-1);
+  }
+
+  #pump-field-sim .pfs-relay-shelf > span[data-state="fault"] {
+    background: rgba(255, 81, 77, 0.12);
+    border-color: var(--destructive);
+  }
+
+  #pump-field-sim .pfs-local-controls {
+    border-top: 1px solid var(--border);
+    display: grid;
+    gap: 9px;
+    padding-top: 10px;
+  }
+
+  #pump-field-sim .pfs-pilot-lights {
+    display: grid;
+    gap: 5px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  #pump-field-sim .pfs-pilot-lights > span {
+    align-items: center;
+    display: flex;
+    gap: 5px;
+    min-width: 0;
+  }
+
+  #pump-field-sim .pfs-pilot-lights i {
+    background: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 2px rgba(16, 28, 37, 0.6);
+    display: inline-block;
+    flex: 0 0 auto;
+    height: 12px;
+    width: 12px;
+  }
+
+  #pump-field-sim .pfs-pilot-lights > span[data-state="on"] i {
+    background: var(--viz-series-2);
+    border-color: var(--viz-series-2);
+  }
+
+  #pump-field-sim #pfs-light-trip[data-state="on"] i {
+    background: var(--destructive);
+    border-color: var(--destructive);
+  }
+
+  #pump-field-sim .pfs-869-bezel {
+    background: rgb(211, 221, 225);
+    color: var(--background);
+    display: grid;
+    gap: 12px;
+    grid-template-columns: minmax(170px, 0.8fr) minmax(280px, 1.7fr) minmax(72px, 0.35fr);
+    padding: 14px;
+  }
+
+  #pump-field-sim .pfs-869-brand {
+    align-items: center;
+    border-bottom: 1px solid rgba(7, 16, 24, 0.35);
+    display: flex;
+    gap: 10px;
+    grid-column: 1 / -1;
+    padding-bottom: 9px;
+  }
+
+  #pump-field-sim .pfs-869-brand > span:last-child {
+    display: grid;
+    gap: 1px;
+  }
+
+  #pump-field-sim .pfs-869-brand small {
+    color: rgb(72, 81, 88);
+  }
+
+  #pump-field-sim .pfs-ge-mark {
+    align-items: center;
+    border: 2px solid var(--background);
+    border-radius: 50%;
+    display: inline-flex;
+    height: 34px;
+    justify-content: center;
+    width: 34px;
+  }
+
+  #pump-field-sim .pfs-869-led-bank {
+    align-content: start;
+    display: grid;
+    gap: 5px 8px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #pump-field-sim .pfs-869-led-bank > span {
+    align-items: center;
+    display: flex;
+    gap: 5px;
+    min-width: 0;
+  }
+
+  #pump-field-sim .pfs-869-led-bank b {
+    font-weight: 500;
+    overflow-wrap: anywhere;
+  }
+
+  #pump-field-sim .pfs-869-led-bank i {
+    background: rgb(148, 161, 169);
+    border: 1px solid rgba(7, 16, 24, 0.45);
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px rgba(238, 247, 251, 0.75);
+    display: inline-block;
+    flex: 0 0 auto;
+    height: 10px;
+    width: 10px;
+  }
+
+  #pump-field-sim .pfs-869-led-bank > span[data-led="green"] i {
+    background: var(--viz-series-2);
+    border-color: var(--viz-series-2);
+    box-shadow: 0 0 8px rgba(38, 209, 121, 0.75);
+  }
+
+  #pump-field-sim .pfs-869-led-bank > span[data-led="amber"] i {
+    background: var(--viz-series-3);
+    border-color: var(--viz-series-3);
+    box-shadow: 0 0 8px rgba(255, 181, 46, 0.75);
+  }
+
+  #pump-field-sim .pfs-869-led-bank > span[data-led="red"] i {
+    background: var(--destructive);
+    border-color: var(--destructive);
+    box-shadow: 0 0 8px rgba(255, 81, 77, 0.75);
+  }
+
+  #pump-field-sim .pfs-869-panel[data-ack="false"] #pfs-led-alarm[data-led="amber"] i,
+  #pump-field-sim .pfs-869-panel[data-ack="false"] #pfs-led-trip[data-led="red"] i {
+    animation: pfs-flash 0.7s steps(2, end) infinite;
+  }
+
+  @keyframes pfs-flash {
+    50% { opacity: 0.22; }
+  }
+
+  #pump-field-sim .pfs-869-gcp {
+    background: rgb(20, 52, 72);
+    border: 5px solid rgb(176, 186, 191);
+    color: var(--card-foreground);
+    display: grid;
+    min-width: 0;
+  }
+
+  #pump-field-sim .pfs-869-gcp[data-state="alarm"] {
+    border-color: var(--viz-series-3);
+  }
+
+  #pump-field-sim .pfs-869-gcp[data-state="trip"] {
+    border-color: var(--destructive);
+  }
+
+  #pump-field-sim .pfs-869-screen-head {
+    background: rgb(37, 91, 120);
+    color: var(--secondary-foreground);
+    display: flex;
+    font-weight: 500;
+    justify-content: space-between;
+    padding: 7px 9px;
+  }
+
+  #pump-field-sim .pfs-869-screen-body {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #pump-field-sim .pfs-869-screen-body > div {
+    border-bottom: 1px solid rgba(73, 96, 109, 0.55);
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+    padding: 8px 9px;
+  }
+
+  #pump-field-sim .pfs-869-screen-body > div > span {
+    color: var(--muted-foreground);
+  }
+
+  #pump-field-sim .pfs-869-message {
+    grid-column: 1 / -1;
+  }
+
+  #pump-field-sim .pfs-869-softkeys {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    text-align: center;
+  }
+
+  #pump-field-sim .pfs-869-softkeys span {
+    border-right: 1px solid var(--border);
+    padding: 5px 2px;
+  }
+
+  #pump-field-sim .pfs-869-nav {
+    align-content: center;
+    display: grid;
+    gap: 6px;
+    justify-items: center;
+  }
+
+  #pump-field-sim .pfs-869-nav > div {
+    display: flex;
+    gap: 5px;
+  }
+
+  #pump-field-sim .pfs-869-pushbuttons {
+    display: grid;
+    gap: 8px;
+    grid-column: 2 / 3;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  #pump-field-sim .pfs-869-pushbuttons .btn {
+    align-items: center;
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+  }
+
+  #pump-field-sim .pfs-869-pushbuttons i {
+    background: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    display: inline-block;
+    height: 9px;
+    width: 9px;
+  }
+
+  #pump-field-sim .pfs-meter-row {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-items: center;
+    padding: 11px 11px 5px;
+  }
+
+  #pump-field-sim .pfs-breaker-meters {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  #pump-field-sim .pfs-meter {
+    aspect-ratio: 1.25;
+    background: var(--card);
+    border: 2px solid var(--border);
+    border-radius: 54% 54% 12px 12px;
+    max-width: 112px;
+    overflow: hidden;
+    position: relative;
+    width: 100%;
+  }
+
+  #pump-field-sim .pfs-meter-arc {
+    border: 2px solid var(--muted-foreground);
+    border-bottom-color: transparent;
+    border-radius: 50% 50% 0 0;
+    height: 46%;
+    left: 15%;
+    position: absolute;
+    top: 14%;
+    width: 70%;
+  }
+
+  #pump-field-sim .pfs-meter-needle {
+    background: var(--foreground);
+    bottom: 34%;
+    height: 35%;
+    left: calc(50% - 1px);
+    position: absolute;
+    transform: rotate(var(--pfs-needle));
+    transform-origin: 50% 100%;
+    transition: transform 180ms ease;
+    width: 2px;
+  }
+
+  #pump-field-sim .pfs-meter-center {
+    background: var(--foreground);
+    border-radius: 50%;
+    bottom: calc(34% - 3px);
+    height: 7px;
+    left: calc(50% - 3px);
+    position: absolute;
+    width: 7px;
+  }
+
+  #pump-field-sim .pfs-meter-reading {
+    bottom: 15%;
+    font-weight: 500;
+    left: 0;
+    position: absolute;
+    right: 0;
+    text-align: center;
+  }
+
+  #pump-field-sim .pfs-meter-label {
+    bottom: 2px;
+    color: var(--muted-foreground);
+    left: 0;
+    position: absolute;
+    right: 0;
+    text-align: center;
+  }
+
+  #pump-field-sim .pfs-field-channels {
+    align-items: stretch;
+    display: grid;
+    gap: 7px;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    padding: 7px 10px;
+  }
+
+  #pump-field-sim .pfs-field-channel {
+    background: rgba(38, 56, 68, 0.48);
+    border: 1px solid var(--border);
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+    padding: 7px;
+  }
+
+  #pump-field-sim .pfs-field-channel[data-state="selected"],
+  #pump-field-sim .pfs-field-channel[data-state="waiting"] {
+    border-color: var(--viz-series-3);
+  }
+
+  #pump-field-sim .pfs-field-channel[data-state="active"] {
+    background: rgba(38, 209, 121, 0.13);
+    border-color: var(--viz-series-2);
+  }
+
+  #pump-field-sim .pfs-field-channel[data-state="fault"] {
+    background: rgba(255, 81, 77, 0.11);
+    border-color: var(--destructive);
+  }
+
+  #pump-field-sim .pfs-field-channel[data-state="locked"] {
+    opacity: 0.62;
+  }
+
+  #pump-field-sim .pfs-channel-heading {
+    display: flex;
+    flex-wrap: wrap;
+    font-weight: 500;
+    gap: 3px 8px;
+    justify-content: space-between;
+  }
+
+  #pump-field-sim .pfs-old-relay,
+  #pump-field-sim .pfs-old-contactor {
+    background: var(--card);
+    border: 1px solid var(--border);
+    display: grid;
+    gap: 2px;
+    min-height: 50px;
+    overflow: hidden;
+    padding: 6px;
+    position: relative;
+  }
+
+  #pump-field-sim .pfs-old-relay small,
+  #pump-field-sim .pfs-old-contactor small,
+  #pump-field-sim .pfs-resistor-symbol small {
+    color: var(--muted-foreground);
+  }
+
+  #pump-field-sim .pfs-relay-armature,
+  #pump-field-sim .pfs-contactor-bar {
+    background: var(--foreground);
+    bottom: 5px;
+    height: 3px;
+    position: absolute;
+    right: 6px;
+    transform: rotate(-20deg);
+    transform-origin: left center;
+    transition: transform 180ms ease;
+    width: 25px;
+  }
+
+  #pump-field-sim .pfs-old-relay[data-state="picked"],
+  #pump-field-sim .pfs-old-contactor[data-state="closed"] {
+    background: rgb(19, 53, 49);
+    border-color: var(--viz-series-2);
+  }
+
+  #pump-field-sim .pfs-old-relay[data-state="picked"] .pfs-relay-armature,
+  #pump-field-sim .pfs-old-contactor[data-state="closed"] .pfs-contactor-bar {
+    background: var(--viz-series-2);
+    transform: rotate(0deg);
+  }
+
+  #pump-field-sim .pfs-old-relay[data-state="fault"],
+  #pump-field-sim .pfs-old-contactor[data-state="fault"] {
+    border-color: var(--destructive);
+  }
+
+  #pump-field-sim .pfs-resistor-symbol {
+    display: grid;
+    gap: 1px;
+    overflow: hidden;
+  }
+
+  #pump-field-sim .pfs-resistor-symbol > span {
+    letter-spacing: -2px;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  #pump-field-sim .pfs-interlock {
+    align-content: center;
+    color: var(--muted-foreground);
+    display: grid;
+    justify-items: center;
+    text-align: center;
+  }
+
+  #pump-field-sim .pfs-interlock > span {
+    font-weight: 500;
+  }
+
+  #pump-field-sim .pfs-interlock[data-state="fault"] {
+    color: var(--destructive);
+  }
+
+  #pump-field-sim .pfs-field-lower {
+    border-top: 1px solid var(--border);
+    display: grid;
+    gap: 10px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 4px 10px 10px;
+    padding-top: 9px;
+  }
+
+  #pump-field-sim .pfs-rheostat,
+  #pump-field-sim .pfs-discharge-bank {
+    align-items: center;
+    display: grid;
+    gap: 6px;
+    justify-items: center;
+    text-align: center;
+  }
+
+  #pump-field-sim .pfs-rheostat .form-label {
+    min-width: 0;
+    width: 100%;
+  }
+
+  #pump-field-sim .pfs-rheostat-knob {
+    background: var(--secondary);
+    border: 3px solid var(--border);
+    border-radius: 50%;
+    display: block;
+    height: 38px;
+    position: relative;
+    width: 38px;
+  }
+
+  #pump-field-sim .pfs-rheostat-knob::after {
+    background: var(--foreground);
+    content: "";
+    height: 14px;
+    left: calc(50% - 1px);
+    position: absolute;
+    top: 3px;
+    transform: rotate(var(--pfs-rheostat-angle, 0deg));
+    transform-origin: 50% 16px;
+    width: 2px;
+  }
+
+  #pump-field-sim .pfs-resistor-stack {
+    background: repeating-linear-gradient(90deg, var(--border) 0 3px, transparent 3px 7px);
+    border: 1px solid var(--border);
+    display: block;
+    height: 28px;
+    width: 62px;
+  }
+
+  #pump-field-sim .pfs-discharge-bank[data-state="connected"] .pfs-resistor-stack {
+    border-color: var(--viz-series-3);
+  }
+
+  #pump-field-sim .pfs-discharge-bank[data-state="isolated"] {
+    opacity: 0.62;
+  }
+
+  #pump-field-sim .pfs-machine-panel {
+    display: grid;
+    grid-template-rows: auto 1fr auto auto;
+  }
+
+  #pump-field-sim .pfs-machine-svg {
+    box-sizing: border-box;
+    display: block;
+    height: auto;
+    justify-self: center;
+    max-width: 760px;
+    min-height: 210px;
+    padding: 10px;
+    width: 100%;
+  }
+
+  #pump-field-sim .pfs-machine-svg path,
+  #pump-field-sim .pfs-machine-svg circle {
+    vector-effect: non-scaling-stroke;
+  }
+
+  #pump-field-sim .pfs-base,
+  #pump-field-sim .pfs-endbell,
+  #pump-field-sim .pfs-rib,
+  #pump-field-sim .pfs-shaft,
+  #pump-field-sim .pfs-sliprings path,
+  #pump-field-sim .pfs-coupling,
+  #pump-field-sim .pfs-rotor-detail path,
+  #pump-field-sim .pfs-impeller-detail path,
+  #pump-field-sim .pfs-suction,
+  #pump-field-sim .pfs-discharge,
+  #pump-field-sim .pfs-valve-passage,
+  #pump-field-sim .pfs-valve-plug,
+  #pump-field-sim .pfs-valve-stem,
+  #pump-field-sim .pfs-vibration-marker path {
+    fill: none;
+    stroke: var(--border);
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 3;
+  }
+
+  #pump-field-sim .pfs-machine-label {
+    fill: var(--foreground);
+    font-weight: 500;
+  }
+
+  #pump-field-sim .pfs-valve-position,
+  #pump-field-sim .pfs-limit-lamp text,
+  #pump-field-sim .pfs-bearing-marker text,
+  #pump-field-sim .pfs-vibration-marker text {
+    fill: var(--foreground);
+  }
+
+  #pump-field-sim .pfs-motor-shell,
+  #pump-field-sim .pfs-pump-volute {
+    fill: rgba(38, 56, 68, 0.68);
+    stroke: var(--border);
+    stroke-linejoin: round;
+    stroke-width: 3;
+  }
+
+  #pump-field-sim .pfs-rotor,
+  #pump-field-sim .pfs-impeller {
+    fill: var(--card);
+    stroke: var(--muted-foreground);
+    stroke-width: 3;
+  }
+
+  #pump-field-sim .pfs-field-winding {
+    fill: none;
+    stroke: var(--muted-foreground);
+    stroke-width: 3;
+  }
+
+  #pump-field-sim .pfs-flow-arrow {
+    fill: var(--muted-foreground);
+    stroke: none;
+  }
+
+  #pump-field-sim .pfs-valve-body,
+  #pump-field-sim .pfs-valve-actuator {
+    fill: rgb(77, 79, 64);
+    stroke: var(--viz-series-3);
+    stroke-width: 3;
+  }
+
+  #pump-field-sim .pfs-valve-plug {
+    stroke: var(--foreground);
+    stroke-width: 8;
+    transform-origin: 655px 91px;
+    transition: transform 180ms linear;
+  }
+
+  #pump-field-sim .pfs-valve-shape[data-state="moving"] .pfs-valve-body {
+    stroke: var(--viz-series-1);
+  }
+
+  #pump-field-sim .pfs-valve-shape[data-state="open"] .pfs-valve-body,
+  #pump-field-sim .pfs-valve-shape[data-state="open"] .pfs-valve-passage {
+    stroke: var(--viz-series-2);
+  }
+
+  #pump-field-sim .pfs-limit-lamp circle,
+  #pump-field-sim .pfs-bearing-marker circle {
+    fill: var(--muted);
+    stroke: var(--border);
+    stroke-width: 2;
+  }
+
+  #pump-field-sim .pfs-limit-lamp[data-state="on"] circle,
+  #pump-field-sim .pfs-bearing-marker[data-state="normal"] circle {
+    fill: var(--viz-series-2);
+    stroke: var(--viz-series-2);
+  }
+
+  #pump-field-sim .pfs-bearing-marker[data-state="alarm"] circle {
+    fill: var(--viz-series-3);
+    stroke: var(--viz-series-3);
+  }
+
+  #pump-field-sim .pfs-bearing-marker[data-state="trip"] circle {
+    fill: var(--destructive);
+    stroke: var(--destructive);
+  }
+
+  #pump-field-sim .pfs-vibration-marker path {
+    stroke: var(--viz-series-1);
+  }
+
+  #pump-field-sim .pfs-bearing-leader {
+    fill: none;
+    stroke: var(--viz-series-2);
+    stroke-linecap: round;
+    stroke-width: 1.5;
+  }
+
+  #pump-field-sim .pfs-vibration-marker[data-state="trip"] path {
+    stroke: var(--destructive);
+  }
+
+  #pump-field-sim .pfs-vibration-marker[data-state="trip"] text {
+    fill: var(--destructive);
+  }
+
+  #pump-field-sim .pfs-machine-panel[data-state="active"][data-selected="L"] .pfs-motor-low .pfs-motor-shell,
+  #pump-field-sim .pfs-machine-panel[data-state="field"][data-selected="L"] .pfs-motor-low .pfs-motor-shell,
+  #pump-field-sim .pfs-machine-panel[data-state="active"][data-selected="H"] .pfs-motor-high .pfs-motor-shell,
+  #pump-field-sim .pfs-machine-panel[data-state="field"][data-selected="H"] .pfs-motor-high .pfs-motor-shell,
+  #pump-field-sim .pfs-machine-panel[data-state="active"] .pfs-shaft,
+  #pump-field-sim .pfs-machine-panel[data-state="field"] .pfs-shaft {
+    stroke: var(--viz-series-1);
+  }
+
+  #pump-field-sim .pfs-machine-panel[data-field="on"][data-selected="L"] .pfs-motor-low .pfs-field-winding,
+  #pump-field-sim .pfs-machine-panel[data-field="on"][data-selected="L"] .pfs-motor-low .pfs-sliprings path,
+  #pump-field-sim .pfs-machine-panel[data-field="on"][data-selected="H"] .pfs-motor-high .pfs-field-winding,
+  #pump-field-sim .pfs-machine-panel[data-field="on"][data-selected="H"] .pfs-motor-high .pfs-sliprings path {
+    stroke: var(--viz-series-2);
+  }
+
+  #pump-field-sim .pfs-rotor-detail,
+  #pump-field-sim .pfs-impeller-detail {
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+
+  #pump-field-sim .pfs-machine-panel[data-state="active"] .pfs-rotor-detail,
+  #pump-field-sim .pfs-machine-panel[data-state="field"] .pfs-rotor-detail,
+  #pump-field-sim .pfs-machine-panel[data-state="active"] .pfs-impeller-detail,
+  #pump-field-sim .pfs-machine-panel[data-state="field"] .pfs-impeller-detail {
+    animation: pfs-rotate 1.15s linear infinite;
+  }
+
+  @keyframes pfs-rotate {
+    to { transform: rotate(360deg); }
+  }
+
+  #pump-field-sim .pfs-machine-panel[data-state="field"] .pfs-pump-volute,
+  #pump-field-sim .pfs-machine-panel[data-state="field"] .pfs-suction,
+  #pump-field-sim .pfs-machine-panel[data-state="field"] .pfs-discharge {
+    stroke: var(--viz-series-1);
+  }
+
+  #pump-field-sim .pfs-machine-panel[data-state="field"] .pfs-flow-arrow {
+    fill: var(--viz-series-1);
+  }
+
+  #pump-field-sim .pfs-condition-panel {
+    border-top: 2px solid var(--viz-series-2);
+    display: grid;
+    gap: 10px;
+    padding: 11px;
+  }
+
+  #pump-field-sim .pfs-condition-controls {
+    align-items: end;
+  }
+
+  #pump-field-sim .pfs-valve-command-control {
+    background: rgb(19, 43, 59);
+    border: 1px solid rgb(54, 149, 200);
+    border-radius: 6px;
+    padding: 9px 11px;
+  }
+
+  #pump-field-sim .pfs-wide-control {
+    min-width: min(100%, 280px);
+  }
+
+  #pump-field-sim .pfs-threshold-legend {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+
+  #pump-field-sim .pfs-threshold-legend i {
+    border-radius: 50%;
+    display: inline-block;
+    height: 10px;
+    margin-left: 5px;
+    width: 10px;
+  }
+
+  #pump-field-sim .pfs-threshold-legend i[data-level="normal"] { background: var(--viz-series-2); }
+  #pump-field-sim .pfs-threshold-legend i[data-level="alarm"] { background: var(--viz-series-3); }
+  #pump-field-sim .pfs-threshold-legend i[data-level="trip"] { background: var(--destructive); }
+
+  #pump-field-sim .pfs-bearing-grid {
+    display: grid;
+    gap: 7px;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  #pump-field-sim .pfs-bearing-tile {
+    display: grid;
+    gap: 2px;
+    justify-items: start;
+    min-width: 0;
+    text-align: left;
+  }
+
+  #pump-field-sim .pfs-bearing-tile[data-state="normal"] {
+    background: rgb(19, 50, 47);
+  }
+
+  #pump-field-sim .pfs-bearing-tile[data-state="alarm"] {
+    background: rgb(64, 59, 39);
+  }
+
+  #pump-field-sim .pfs-bearing-tile[data-state="trip"] {
+    background: rgb(59, 38, 44);
+  }
+
+  #pump-field-sim .pfs-bearing-tile small {
+    color: var(--foreground);
+  }
+
+  #pump-field-sim .pfs-vibration-grid {
+    border-top: 1px solid var(--border);
+    display: grid;
+    gap: 10px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding-top: 9px;
+  }
+
+  #pump-field-sim .pfs-vibration-grid > span {
+    grid-column: 1 / -1;
+  }
+
+  #pump-field-sim .pfs-vibration-control {
+    background: rgb(19, 50, 47);
+    border: 1px solid rgb(52, 129, 103);
+    border-radius: 6px;
+    padding: 9px 11px;
+  }
+
+  #pump-field-sim .pfs-vibration-control[data-state="trip"] {
+    background: rgb(59, 38, 44);
+    border-color: var(--destructive);
+  }
+
+  #pump-field-sim .pfs-machine-panel[data-state="fault"] .pfs-motor-shell {
+    stroke: var(--destructive);
+  }
+
+  #pump-field-sim .pfs-machine-data {
+    display: grid;
+    gap: 6px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    padding: 0 10px 9px;
+  }
+
+  #pump-field-sim .pfs-machine-data > span {
+    border-top: 1px solid var(--border);
+    display: grid;
+    gap: 1px;
+    min-width: 0;
+    padding-top: 6px;
+  }
+
+  #pump-field-sim .pfs-machine-data small {
+    color: var(--muted-foreground);
+    overflow-wrap: anywhere;
+  }
+
+  #pump-field-sim .pfs-pump-status {
+    background: rgba(38, 56, 68, 0.48);
+    color: var(--foreground);
+    padding: 7px 10px;
+  }
+
+  #pump-field-sim .pfs-trace {
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 9px 0;
+  }
+
+  #pump-field-sim .pfs-trace-step {
+    background: rgba(38, 56, 68, 0.58);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    display: grid;
+    gap: 1px;
+    min-width: 74px;
+    padding: 6px 8px;
+  }
+
+  #pump-field-sim .pfs-trace-step > span:first-child {
+    font-weight: 500;
+  }
+
+  #pump-field-sim .pfs-node-value {
+    color: var(--muted-foreground);
+    overflow-wrap: anywhere;
+  }
+
+  #pump-field-sim .pfs-trace-step[data-state="ready"] {
+    background: rgba(34, 56, 67, 0.58);
+  }
+
+  #pump-field-sim .pfs-trace-step[data-state="active"] {
+    background: rgba(43, 181, 255, 0.15);
+    border-color: var(--viz-series-1);
+  }
+
+  #pump-field-sim .pfs-trace-step[data-state="field"] {
+    background: rgba(38, 209, 121, 0.15);
+    border-color: var(--viz-series-2);
+  }
+
+  #pump-field-sim .pfs-trace-step[data-state="waiting"] {
+    background: rgba(255, 181, 46, 0.15);
+    border-color: var(--viz-series-3);
+  }
+
+  #pump-field-sim .pfs-trace-step[data-state="fault"] {
+    background: rgba(255, 81, 77, 0.12);
+    border-color: var(--destructive);
+  }
+
+  #pump-field-sim .pfs-trace-arrow,
+  #pump-field-sim .pfs-trace-divider {
+    color: var(--muted-foreground);
+  }
+
+  #pump-field-sim .pfs-diagnostic {
+    background: rgba(22, 59, 80, 0.52);
+    border-left: 3px solid var(--primary);
+    color: var(--accent-foreground);
+    padding: 10px 12px;
+  }
+
+  #pump-field-sim .pfs-assumption {
+    max-width: 78ch;
+  }
+
+  @media (max-width: 640px) {
+    #pump-field-sim .pfs-equipment {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    #pump-field-sim .pfs-869-bezel {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    #pump-field-sim .pfs-869-brand,
+    #pump-field-sim .pfs-869-pushbuttons {
+      grid-column: 1;
+    }
+
+    #pump-field-sim .pfs-869-nav {
+      grid-auto-flow: column;
+      justify-content: center;
+    }
+
+    #pump-field-sim .pfs-bearing-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    #pump-field-sim .pfs-vibration-grid,
+    #pump-field-sim .pfs-machine-data {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    #pump-field-sim .pfs-vibration-grid > span {
+      grid-column: 1;
+    }
+  }
+
+  @media (max-width: 390px) {
+    #pump-field-sim .pfs-field-channels {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    #pump-field-sim .pfs-interlock {
+      grid-auto-flow: column;
+      justify-content: center;
+    }
+
+    #pump-field-sim .pfs-trace-arrow,
+    #pump-field-sim .pfs-trace-divider {
+      display: none;
+    }
+
+    #pump-field-sim .pfs-869-screen-body,
+    #pump-field-sim .pfs-869-pushbuttons {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    #pump-field-sim .pfs-869-message {
+      grid-column: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #pump-field-sim .pfs-moving-contact,
+    #pump-field-sim .pfs-relay-armature,
+    #pump-field-sim .pfs-contactor-bar,
+    #pump-field-sim .pfs-meter-needle,
+    #pump-field-sim .pfs-valve-plug,
+    #pump-field-sim .pfs-869-led-bank i,
+    #pump-field-sim .pfs-rotor-detail,
+    #pump-field-sim .pfs-impeller-detail {
+      transition: none;
+      animation: none;
+    }
+  }
+</style>
+
+<script>
+(() => {
+  const root = document.getElementById("pump-field-sim");
+  if (!root) return;
+
+  const bearingNames = {
+    "mob": "Motor outboard",
+    "mib": "Motor inboard",
+    "pib": "Pump inboard",
+    "pob": "Pump outboard",
+    "thrust": "Thrust bearing"
+  };
+  const vibrationTripSetpoint = 0.20;
+
+  const el = {
+    speedSelect: root.querySelector("#pfs-speed"),
+    faultSelect: root.querySelector("#pfs-fault"),
+    blind: root.querySelector("#pfs-blind"),
+    newScenario: root.querySelector("#pfs-new-scenario"),
+    clearCondition: root.querySelector("#pfs-clear-condition"),
+    timeScale: root.querySelector("#pfs-time-scale"),
+    diagnosis: root.querySelector("#pfs-diagnosis"),
+    checkDiagnosis: root.querySelector("#pfs-check-diagnosis"),
+    diagnosisResult: root.querySelector("#pfs-diagnosis-result"),
+    fieldRheostat: root.querySelector("#pfs-field-rheostat"),
+    rheostatValue: root.querySelector("#pfs-rheostat-value"),
+    start: root.querySelector("#pfs-start"),
+    stop: root.querySelector("#pfs-stop"),
+    emergencyTrip: root.querySelector("#pfs-emergency-trip"),
+    ack: root.querySelector("#pfs-ack"),
+    reset: root.querySelector("#pfs-reset"),
+    screen: root.querySelector("#pfs-869-screen"),
+    screenNav: root.querySelectorAll("[data-screen-nav]"),
+    stage: root.querySelector("#pfs-stage"),
+    speedValue: root.querySelector("#pfs-speed-value"),
+    hpValue: root.querySelector("#pfs-hp-value"),
+    dcValue: root.querySelector("#pfs-dc-value"),
+    coilLabel: root.querySelector("#pfs-coil-label"),
+    coilValue: root.querySelector("#pfs-coil-value"),
+    currentValue: root.querySelector("#pfs-current-value"),
+    pfValue: root.querySelector("#pfs-pf-value"),
+    valveValue: root.querySelector("#pfs-valve-value"),
+    valveCommand: root.querySelector("#pfs-valve-command"),
+    valveCommandValue: root.querySelector("#pfs-valve-command-value"),
+    valveCommandStatus: root.querySelector("#pfs-valve-command-status"),
+    sealValue: root.querySelector("#pfs-seal-value"),
+    latchValue: root.querySelector("#pfs-latch-value"),
+    progress: root.querySelector("#pfs-progress"),
+    diagnostic: root.querySelector("#pfs-diagnostic"),
+    mainLabel: root.querySelector("#pfs-main-label"),
+    farLabel: root.querySelector("#pfs-56-label"),
+    contact41Label: root.querySelector("#pfs-41-label"),
+    bearingSelect: root.querySelector("#pfs-bearing-select"),
+    bearingTemp: root.querySelector("#pfs-bearing-temp"),
+    bearingTempValue: root.querySelector("#pfs-bearing-temp-value"),
+    bearingTiles: root.querySelectorAll(".pfs-bearing-tile"),
+    motorVibration: root.querySelector("#pfs-motor-vibration"),
+    pumpVibration: root.querySelector("#pfs-pump-vibration"),
+    motorVibrationValue: root.querySelector("#pfs-motor-vibration-value"),
+    pumpVibrationValue: root.querySelector("#pfs-pump-vibration-value"),
+    motorVibrationControl: root.querySelector("#pfs-motor-vibration-control"),
+    pumpVibrationControl: root.querySelector("#pfs-pump-vibration-control"),
+    motorVibrationMarker: root.querySelector("#pfs-marker-motor-vib"),
+    pumpVibrationMarker: root.querySelector("#pfs-marker-pump-vib"),
+    equipment: {
+      starter: root.querySelector("#pfs-starter-cubicle"),
+      mainState: root.querySelector("#pfs-main-state"),
+      closingMagnet: root.querySelector("#pfs-closing-magnet"),
+      tripOutput: root.querySelector("#pfs-starter-ol"),
+      latchStatus: root.querySelector("#pfs-starter-gf"),
+      valveClosedInput: root.querySelector("#pfs-starter-uv"),
+      aux52a: root.querySelector("#pfs-starter-42a"),
+      aux52aLabel: root.querySelector("#pfs-starter-42a-label"),
+      busMeter: root.querySelector("#pfs-bus-meter"),
+      busMeterReading: root.querySelector("#pfs-bus-meter-reading"),
+      ampMeter: root.querySelector("#pfs-amp-meter"),
+      ampMeterReading: root.querySelector("#pfs-amp-meter-reading"),
+      pfMeter: root.querySelector("#pfs-pf-meter"),
+      pfMeterReading: root.querySelector("#pfs-pf-meter-reading"),
+      lightReady: root.querySelector("#pfs-light-ready"),
+      lightRun: root.querySelector("#pfs-light-run"),
+      lightField: root.querySelector("#pfs-light-field"),
+      lightTrip: root.querySelector("#pfs-light-trip"),
+      fieldCubicle: root.querySelector("#pfs-field-cubicle"),
+      fieldState: root.querySelector("#pfs-field-state"),
+      dcMeter: root.querySelector("#pfs-dc-meter"),
+      dcMeterReading: root.querySelector("#pfs-dc-meter-reading"),
+      fieldMeter: root.querySelector("#pfs-field-meter"),
+      fieldMeterReading: root.querySelector("#pfs-field-meter-reading"),
+      channelL: root.querySelector("#pfs-channel-L"),
+      channelH: root.querySelector("#pfs-channel-H"),
+      farL: root.querySelector("#pfs-physical-56-L"),
+      farH: root.querySelector("#pfs-physical-56-H"),
+      contact41L: root.querySelector("#pfs-physical-41-L"),
+      contact41H: root.querySelector("#pfs-physical-41-H"),
+      interlock: root.querySelector("#pfs-interlock"),
+      dischargeBank: root.querySelector("#pfs-discharge-bank"),
+      machine: root.querySelector("#pfs-machine"),
+      machineHp: root.querySelector("#pfs-machine-hp"),
+      rotorFieldState: root.querySelector("#pfs-rotor-field-state"),
+      valveProofState: root.querySelector("#pfs-valve-proof-state"),
+      pumpStatus: root.querySelector("#pfs-pump-status"),
+      valveShape: root.querySelector("#pfs-valve-shape"),
+      valvePlug: root.querySelector("#pfs-valve-plug"),
+      valveSvgValue: root.querySelector("#pfs-valve-svg-value"),
+      valveClosedLamp: root.querySelector("#pfs-svg-vlv-closed"),
+      valveOpenLamp: root.querySelector("#pfs-svg-vlv-open")
+    },
+    relay869: {
+      panel: root.querySelector("#pfs-869-panel"),
+      gcp: root.querySelector("#pfs-869-gcp"),
+      pageTitle: root.querySelector("#pfs-869-page-title"),
+      clock: root.querySelector("#pfs-869-clock"),
+      lineLabels: [1, 2, 3, 4, 5, 6].map((n) => root.querySelector("#pfs-869-line" + n + "-label")),
+      lineValues: [1, 2, 3, 4, 5, 6].map((n) => root.querySelector("#pfs-869-line" + n + "-value")),
+      leds: {
+        inservice: root.querySelector("#pfs-led-inservice"),
+        pickup: root.querySelector("#pfs-led-pickup"),
+        alarm: root.querySelector("#pfs-led-alarm"),
+        trip: root.querySelector("#pfs-led-trip"),
+        breaker: root.querySelector("#pfs-led-52"),
+        low: root.querySelector("#pfs-led-low"),
+        high: root.querySelector("#pfs-led-high"),
+        far: root.querySelector("#pfs-led-far"),
+        field: root.querySelector("#pfs-led-field"),
+        valveClosed: root.querySelector("#pfs-led-valve-closed"),
+        valveOpen: root.querySelector("#pfs-led-valve-open"),
+        k45: root.querySelector("#pfs-led-k45"),
+        bearing: root.querySelector("#pfs-led-bearing"),
+        vibration: root.querySelector("#pfs-led-vibration")
+      }
+    },
+    nodes: {
+      supply: root.querySelector("#pfs-node-supply"),
+      permissives: root.querySelector("#pfs-node-permissives"),
+      breaker: root.querySelector("#pfs-node-main"),
+      stator: root.querySelector("#pfs-node-stator"),
+      dc: root.querySelector("#pfs-node-dc"),
+      far: root.querySelector("#pfs-node-56"),
+      contact41: root.querySelector("#pfs-node-41"),
+      field: root.querySelector("#pfs-node-field"),
+      valveClosed: root.querySelector("#pfs-node-valve-closed"),
+      seal: root.querySelector("#pfs-node-seal"),
+      valveOpen: root.querySelector("#pfs-node-valve-open")
+    },
+    bearings: {}
+  };
+
+  Object.keys(bearingNames).forEach((key) => {
+    el.bearings[key] = {
+      temp: root.querySelector("#pfs-temp-" + key),
+      status: root.querySelector("#pfs-status-" + key),
+      marker: root.querySelector("#pfs-marker-" + key),
+      tile: root.querySelector("[data-bearing=\"" + key + "\"]")
+    };
+  });
+
+  const state = {
+    phase: "stopped",
+    speed: 0,
+    breakerClosed: false,
+    farPicked: false,
+    fieldContactor: false,
+    fieldDelay: 0,
+    runTime: 0,
+    hiddenFault: "far-fail",
+    tripTargets: [],
+    acknowledged: true,
+    startBlock: "",
+    operatorMessage: "",
+    lastTime: performance.now(),
+    simTime: 0,
+    valvePosition: 0,
+    valveCommand: "closed",
+    valveTravelElapsed: 0,
+    sealActive: false,
+    sealRemaining: 0,
+    valveCloseTimeout: false,
+    screenPage: 0,
+    events: [],
+    bearingTemps: {
+      "mob": 52,
+      "mib": 54,
+      "pib": 56,
+      "pob": 55,
+      "thrust": 58
+    },
+    bearingLevels: {
+      "mob": "normal",
+      "mib": "normal",
+      "pib": "normal",
+      "pob": "normal",
+      "thrust": "normal"
+    }
+  };
+
+  const instantTripFaults = new Set(["bus-loss", "ground-fault", "overload"]);
+  const hiddenFaultPool = [
+    "bus-loss",
+    "dc-loss",
+    "52a-fail",
+    "far-fail",
+    "41-coil-open",
+    "pickup-bypass-open",
+    "mechanical-interlock",
+    "loss-field",
+    "valve-closed-proof",
+    "sealin-fail",
+    "valve-fail-open",
+    "valve-fail-close",
+    "ground-fault",
+    "overload"
+  ];
+  const faultNames = {
+    "none": "no injected condition",
+    "bus-loss": "4.8 kV bus undervoltage",
+    "dc-loss": "field DC supply loss",
+    "52a-fail": "breaker 52a auxiliary failure",
+    "far-fail": "FAR failure to pick up",
+    "41-coil-open": "open 41 field-contactor coil",
+    "pickup-bypass-open": "open 41 pickup-bypass contact",
+    "mechanical-interlock": "mechanically blocked 41 contactor",
+    "loss-field": "loss of field / device 40 trip",
+    "valve-closed-proof": "36-inch valve closed-proof failure",
+    "sealin-fail": "45-second K45 seal-in failure",
+    "valve-fail-open": "valve failure below the 30% run-position permissive",
+    "valve-fail-close": "valve failure to reach the closed limit",
+    "ground-fault": "ground fault",
+    "overload": "phase overload"
+  };
+
+  function suffix() {
+    return el.speedSelect.value;
+  }
+
+  function fault() {
+    return el.blind.checked ? state.hiddenFault : el.faultSelect.value;
+  }
+
+  function selectedHp() {
+    return suffix() === "L" ? "2,500 hp" : "5,000 hp";
+  }
+
+  function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+  }
+
+  function needle(value, min, max) {
+    const ratio = clamp((value - min) / (max - min), 0, 1);
+    return (-42 + ratio * 84).toFixed(1) + "deg";
+  }
+
+  function formatTime(seconds) {
+    const minutes = Math.floor(seconds / 60);
+    const remaining = Math.max(0, seconds - minutes * 60);
+    return String(minutes).padStart(2, "0") + ":" + remaining.toFixed(1).padStart(4, "0");
+  }
+
+  function logEvent(message) {
+    state.events.unshift({
+      time: formatTime(state.simTime),
+      message
+    });
+    state.events = state.events.slice(0, 8);
+  }
+
+  function nodeValue(node, value) {
+    const target = node.querySelector(".pfs-node-value");
+    if (target) target.textContent = value;
+  }
+
+  function setNode(node, status, value) {
+    node.dataset.state = status;
+    nodeValue(node, value);
+  }
+
+  function setLed(led, color) {
+    led.dataset.led = color;
+  }
+
+  function busAvailable() {
+    return fault() !== "bus-loss";
+  }
+
+  function dcAvailable() {
+    return fault() !== "dc-loss";
+  }
+
+  function contact52aClosed() {
+    return state.breakerClosed && fault() !== "52a-fail";
+  }
+
+  function valvePhysicallyClosed() {
+    return state.valvePosition <= 0.5;
+  }
+
+  function valvePhysicallyOpen() {
+    return state.valvePosition >= 99.5;
+  }
+
+  function valveClosedLimit() {
+    return valvePhysicallyClosed() && fault() !== "valve-closed-proof";
+  }
+
+  function valveOpenLimit() {
+    return valvePhysicallyOpen();
+  }
+
+  function valvePositionCommand() {
+    return clamp(Number(el.valveCommand.value) || 30, 30, 100);
+  }
+
+  function valveRunPermissive() {
+    return state.valvePosition >= 29.5;
+  }
+
+  function valveAtCommand() {
+    return Math.abs(state.valvePosition - valvePositionCommand()) <= 0.5;
+  }
+
+  function valveDisplayState() {
+    if (valvePhysicallyClosed()) return valveClosedLimit() ? "CLOSED" : "CLOSED · PROOF FAILED";
+    if (valveOpenLimit()) return "OPEN";
+    if (state.phase === "running" && valveAtCommand()) return "POSITION";
+    return "TRAVEL";
+  }
+
+  function valveCloseFailureFloor() {
+    if (fault() !== "valve-fail-close" || valvePhysicallyClosed()) return 0;
+    return Math.min(35, Math.max(15, valvePositionCommand() * 0.35));
+  }
+
+  function k45ArmedByClosedLimit() {
+    return valveClosedLimit() && (state.phase === "stopped" || state.breakerClosed && ["accelerating", "waiting-field", "synchronizing"].includes(state.phase));
+  }
+
+  function coilReading() {
+    if (!state.breakerClosed || !contact52aClosed() || !state.farPicked || !dcAvailable()) return "0 V";
+    if (fault() === "pickup-bypass-open") return "45 V";
+    return "125 V";
+  }
+
+  function currentPercent() {
+    if (!state.breakerClosed) return 0;
+    if (state.phase === "accelerating" || state.phase === "waiting-field") {
+      return clamp(520 - state.speed * 4, 145, 520);
+    }
+    if (state.phase === "synchronizing") {
+      return clamp(145 - (state.speed - 92) * 7, 72, 145);
+    }
+    return Math.round(65 + state.valvePosition * 0.23);
+  }
+
+  function powerFactor() {
+    if (!state.breakerClosed) return { label: "—", position: 0 };
+    if (!state.fieldContactor) return { label: "0.30 LAG", position: 0.13 };
+
+    const setting = Number(el.fieldRheostat.value);
+    if (setting < 45) {
+      const pf = 0.82 + (setting / 45) * 0.17;
+      return { label: pf.toFixed(2) + " LAG", position: 0.28 + (setting / 45) * 0.31 };
+    }
+    if (setting <= 55) {
+      return { label: "1.00", position: 0.63 };
+    }
+    const pf = 0.99 - ((setting - 55) / 45) * 0.14;
+    return { label: pf.toFixed(2) + " LEAD", position: 0.66 + ((setting - 55) / 45) * 0.29 };
+  }
+
+  function fieldCurrentPercent() {
+    if (!state.fieldContactor) return 0;
+    return 70 + Number(el.fieldRheostat.value) * 0.6;
+  }
+
+  function bearingLevel(temp) {
+    if (temp >= 85) return "trip";
+    if (temp >= 75) return "alarm";
+    return "normal";
+  }
+
+  function hottestBearing() {
+    return Object.keys(state.bearingTemps).reduce((hottest, key) => {
+      return state.bearingTemps[key] > state.bearingTemps[hottest] ? key : hottest;
+    }, "mob");
+  }
+
+  function bearingAlarmActive() {
+    return Object.values(state.bearingTemps).some((temp) => temp >= 75);
+  }
+
+  function bearingTripActive() {
+    return Object.values(state.bearingTemps).some((temp) => temp >= 85);
+  }
+
+  function motorVibration() {
+    return Number(el.motorVibration.value);
+  }
+
+  function pumpVibration() {
+    return Number(el.pumpVibration.value);
+  }
+
+  function vibrationTripActive() {
+    return motorVibration() >= vibrationTripSetpoint || pumpVibration() >= vibrationTripSetpoint;
+  }
+
+  function processAlarmActive() {
+    return Boolean(state.startBlock || state.valveCloseTimeout);
+  }
+
+  function primaryTrip() {
+    return state.tripTargets.length ? state.tripTargets[state.tripTargets.length - 1] : null;
+  }
+
+  function tripCodeFor(activeFault) {
+    const codes = {
+      "bus-loss": "27P",
+      "ground-fault": "50G",
+      "overload": "51P"
+    };
+    return codes[activeFault] || "MPR";
+  }
+
+  function tripLabelFor(activeFault) {
+    const labels = {
+      "bus-loss": "Phase undervoltage",
+      "ground-fault": "Ground overcurrent",
+      "overload": "Phase overload"
+    };
+    return labels[activeFault] || "Protective trip";
+  }
+
+  function latch869Trip(code, label) {
+    if (!state.tripTargets.some((target) => target.code === code)) {
+      state.tripTargets.push({ code, label });
+      logEvent("TRIP " + code + " · " + label);
+    }
+    state.breakerClosed = false;
+    state.farPicked = false;
+    state.fieldContactor = false;
+    state.fieldDelay = 0;
+    state.runTime = 0;
+    state.sealActive = false;
+    state.sealRemaining = 0;
+    state.valveCommand = "closed";
+    state.phase = "tripped";
+    state.acknowledged = false;
+    state.operatorMessage = "MOTOR RELAY TRIP LATCHED: " + code + " · " + label + ". Clear the active cause, then use RESET RELAY TRIPS.";
+  }
+
+  function evaluateBearingTrips() {
+    Object.keys(state.bearingTemps).forEach((key) => {
+      if (state.bearingTemps[key] >= 85) {
+        latch869Trip("38-" + key.toUpperCase(), bearingNames[key] + " RTD " + state.bearingTemps[key] + "°C");
+      }
+    });
+  }
+
+  function evaluateVibrationTrips() {
+    if (motorVibration() >= vibrationTripSetpoint) {
+      latch869Trip("VIB-MTR", "Motor vibration " + motorVibration().toFixed(2) + " in/s RMS");
+    }
+    if (pumpVibration() >= vibrationTripSetpoint) {
+      latch869Trip("VIB-PMP", "Pump vibration " + pumpVibration().toFixed(2) + " in/s RMS");
+    }
+  }
+
+  function resetMachineState(clearTrips) {
+    state.phase = "stopped";
+    state.speed = 0;
+    state.breakerClosed = false;
+    state.farPicked = false;
+    state.fieldContactor = false;
+    state.fieldDelay = 0;
+    state.runTime = 0;
+    state.startBlock = "";
+    state.operatorMessage = "";
+    state.valvePosition = 0;
+    state.valveCommand = "closed";
+    state.valveTravelElapsed = 0;
+    state.sealActive = false;
+    state.sealRemaining = 0;
+    state.valveCloseTimeout = false;
+    state.acknowledged = true;
+    if (clearTrips) state.tripTargets = [];
+    el.speedSelect.disabled = false;
+  }
+
+  function activeResetBlockers() {
+    const blockers = [];
+    if (instantTripFaults.has(fault())) blockers.push(faultNames[fault()]);
+    Object.keys(state.bearingTemps).forEach((key) => {
+      if (state.bearingTemps[key] >= 85) {
+        blockers.push(bearingNames[key] + " remains at " + state.bearingTemps[key] + "°C");
+      }
+    });
+    if (motorVibration() >= vibrationTripSetpoint) {
+      blockers.push("motor vibration remains at " + motorVibration().toFixed(2) + " in/s RMS");
+    }
+    if (pumpVibration() >= vibrationTripSetpoint) {
+      blockers.push("pump vibration remains at " + pumpVibration().toFixed(2) + " in/s RMS");
+    }
+    return blockers;
+  }
+
+  function resetTrips() {
+    if (!state.tripTargets.length && state.phase !== "tripped") {
+      state.operatorMessage = "RELAY RESET: no latched trip targets are present.";
+      render();
+      return;
+    }
+    const blockers = activeResetBlockers();
+    if (blockers.length) {
+      state.operatorMessage = "RESET BLOCKED: " + blockers.join("; ") + ". Clear or lower the active input first.";
+      state.acknowledged = false;
+      render();
+      return;
+    }
+    const wasMoving = state.speed > 0.1;
+    state.tripTargets = [];
+    state.acknowledged = true;
+    state.operatorMessage = "RELAY RESET COMPLETE: all motor-relay trip targets cleared.";
+    state.phase = wasMoving ? "stopping" : "stopped";
+    state.breakerClosed = false;
+    state.farPicked = false;
+    state.fieldContactor = false;
+    state.valveCommand = "closed";
+    state.startBlock = "";
+    state.valveCloseTimeout = false;
+    if (!wasMoving) el.speedSelect.disabled = false;
+    logEvent("Motor-relay trip targets reset");
+    render();
+  }
+
+  function acknowledge() {
+    state.acknowledged = true;
+    state.operatorMessage = "RELAY ACKNOWLEDGE: flashing indication silenced; active alarms and latched trips remain.";
+    logEvent("Alarm / trip indications acknowledged");
+    render();
+  }
+
+  function fieldCanClose() {
+    return busAvailable()
+      && dcAvailable()
+      && contact52aClosed()
+      && state.farPicked
+      && !["41-coil-open", "pickup-bypass-open", "mechanical-interlock"].includes(fault());
+  }
+
+  function start() {
+    state.operatorMessage = "";
+    state.startBlock = "";
+    state.valveCloseTimeout = false;
+
+    if (state.tripTargets.length || state.phase === "tripped") {
+      state.operatorMessage = "START INHIBITED: a motor-relay trip is latched. Clear its input and press RESET RELAY TRIPS.";
+      render();
+      return;
+    }
+    if (state.phase !== "stopped") return;
+
+    evaluateBearingTrips();
+    evaluateVibrationTrips();
+    if (state.tripTargets.length) {
+      render();
+      return;
+    }
+    if (instantTripFaults.has(fault())) {
+      latch869Trip(tripCodeFor(fault()), tripLabelFor(fault()));
+      render();
+      return;
+    }
+    if (!valveClosedLimit()) {
+      state.startBlock = "RELAY START INHIBIT · VLV-CLS NOT MADE";
+      state.operatorMessage = "START BLOCKED: the 36-inch discharge valve closed-limit relay is not made.";
+      state.acknowledged = false;
+      logEvent("START BLOCK · valve closed proof missing");
+      render();
+      return;
+    }
+
+    state.phase = "accelerating";
+    state.breakerClosed = true;
+    state.farPicked = false;
+    state.fieldContactor = false;
+    state.fieldDelay = 0;
+    state.runTime = 0;
+    state.valveCommand = "closed";
+    state.valvePosition = 0;
+    state.sealActive = false;
+    state.sealRemaining = 0;
+    state.valveTravelElapsed = 0;
+    state.acknowledged = true;
+    el.speedSelect.disabled = true;
+    logEvent("START accepted · VLV-CLS made");
+    logEvent("52-" + suffix() + " closed");
+    render();
+  }
+
+  function normalStop() {
+    if (state.phase === "stopped" || state.phase === "stopping" || state.phase === "tripped") return;
+    state.operatorMessage = "";
+    state.startBlock = "";
+    state.valveCommand = "closed";
+    state.sealActive = false;
+    state.sealRemaining = 0;
+    state.valveTravelElapsed = 0;
+    state.valveCloseTimeout = false;
+    logEvent("NORMAL STOP · valve close command");
+
+    if (state.valvePosition <= 0.5) {
+      state.valvePosition = 0;
+      state.breakerClosed = false;
+      state.farPicked = false;
+      state.fieldContactor = false;
+      state.phase = "stopping";
+      logEvent("VLV-CLS made · 52-" + suffix() + " opened");
+    } else {
+      state.phase = "closing-valve";
+    }
+    render();
+  }
+
+  function emergencyTrip() {
+    if (state.phase === "stopped" && !state.breakerClosed) return;
+    latch869Trip("MAN-TRIP", "Emergency trip pushbutton");
+    render();
+  }
+
+  function applyLossOfField(dt) {
+    if (fault() !== "loss-field") {
+      state.runTime = 0;
+      return false;
+    }
+    state.runTime += dt;
+    if (state.runTime >= 0.45) {
+      state.fieldContactor = false;
+      state.speed = Math.max(96, state.speed - 3 * dt);
+    }
+    if (state.runTime >= 1.35) {
+      latch869Trip("40", "Loss of field / excitation");
+      return true;
+    }
+    return false;
+  }
+
+  function updateValveOpening(dt) {
+    const valveDt = dt * Number(el.timeScale.value);
+    state.valveTravelElapsed += valveDt;
+    state.sealRemaining = Math.max(0, 45 - state.valveTravelElapsed);
+    const command = valvePositionCommand();
+    const openCap = fault() === "valve-fail-open" ? Math.min(22, command) : command;
+    const step = (100 / 45) * valveDt;
+    if (state.valvePosition < openCap) state.valvePosition = Math.min(openCap, state.valvePosition + step);
+    else if (state.valvePosition > openCap) state.valvePosition = Math.max(openCap, state.valvePosition - step);
+
+    if (fault() === "sealin-fail" && state.valvePosition > 1) {
+      latch869Trip("48-K45", "K45 seal-in failed when VLV-CLS dropped");
+      return;
+    }
+    if (valveAtCommand() && valveRunPermissive()) {
+      state.valvePosition = command;
+      state.phase = "running";
+      logEvent("VLV-POS ≥30% made · run permissive established");
+      return;
+    }
+    if (state.sealRemaining <= 0 && !valveRunPermissive()) {
+      state.sealActive = false;
+      latch869Trip("48-VLV", "36-inch valve failed to reach the 30% run position in 45 seconds");
+    }
+  }
+
+  function updateRunningValve(dt) {
+    const valveDt = dt * Number(el.timeScale.value);
+    const command = valvePositionCommand();
+    const step = (100 / 45) * valveDt;
+    state.valveCommand = "position";
+
+    if (state.valvePosition < command) state.valvePosition = Math.min(command, state.valvePosition + step);
+    else if (state.valvePosition > command) state.valvePosition = Math.max(command, state.valvePosition - step);
+
+    if (state.sealActive) {
+      state.valveTravelElapsed += valveDt;
+      state.sealRemaining = Math.max(0, 45 - state.valveTravelElapsed);
+      if (state.sealRemaining <= 0) {
+        state.sealActive = false;
+        logEvent("K45 timed out · VLV-POS ≥30% carries run");
+      }
+    }
+
+    if (!state.sealActive && !valveRunPermissive()) {
+      latch869Trip("48-VLV", "Valve position dropped below the 30% run permissive");
+    }
+  }
+
+  function updateValveClosing(dt) {
+    const valveDt = dt * Number(el.timeScale.value);
+    state.valveTravelElapsed += valveDt;
+    const closeFloor = valveCloseFailureFloor();
+    state.valvePosition = Math.max(closeFloor, state.valvePosition - (100 / 45) * valveDt);
+
+    if (valveClosedLimit()) {
+      state.valvePosition = 0;
+      state.breakerClosed = false;
+      state.farPicked = false;
+      state.fieldContactor = false;
+      state.phase = "stopping";
+      state.valveCloseTimeout = false;
+      logEvent("VLV-CLS made · 52-" + suffix() + " opened");
+      return;
+    }
+    if (state.valveTravelElapsed >= 45 && fault() === "valve-fail-close") {
+      if (!state.valveCloseTimeout) {
+        state.valveCloseTimeout = true;
+        state.acknowledged = false;
+        state.operatorMessage = "NORMAL STOP INCOMPLETE: the valve stopped before VLV-CLS. Motor remains energized because closed proof has not made.";
+        logEvent("STOP INCOMPLETE · VLV-CLS not made");
+      }
+    }
+  }
+
+  function updateSimulation(dt) {
+    state.simTime += dt;
+
+    if (state.phase !== "stopped" && state.phase !== "tripped" && instantTripFaults.has(fault())) {
+      latch869Trip(tripCodeFor(fault()), tripLabelFor(fault()));
+    }
+    if (!state.tripTargets.length) {
+      evaluateBearingTrips();
+      evaluateVibrationTrips();
+    }
+
+    if (state.phase === "accelerating" || state.phase === "waiting-field") {
+      state.speed = Math.min(93, state.speed + 22 * dt);
+      state.phase = state.speed >= 91 ? "waiting-field" : "accelerating";
+      const wasPicked = state.farPicked;
+      state.farPicked = state.speed >= 92 && fault() !== "far-fail";
+      if (!wasPicked && state.farPicked) logEvent("FAR-" + suffix() + " picked up");
+
+      if (state.farPicked && fieldCanClose()) {
+        state.fieldDelay += dt;
+        if (state.fieldDelay >= 0.65) {
+          state.fieldContactor = true;
+          state.phase = "synchronizing";
+          logEvent("41-" + suffix() + " closed · DC field applied");
+        }
+      } else {
+        state.fieldContactor = false;
+        state.fieldDelay = 0;
+      }
+    } else if (state.phase === "synchronizing") {
+      if (!fieldCanClose()) {
+        state.fieldContactor = false;
+        state.phase = "waiting-field";
+      } else {
+        state.speed = Math.min(100, state.speed + 14 * dt);
+        if (state.speed >= 99.9) {
+          state.speed = 100;
+          state.phase = "loading";
+          state.valveCommand = "position";
+          state.valveTravelElapsed = 0;
+          state.sealRemaining = 45;
+          state.sealActive = valveClosedLimit() && fault() !== "sealin-fail";
+          logEvent("Synchronous speed · valve POSITION command " + Math.round(valvePositionCommand()) + "%");
+          logEvent(state.sealActive ? "K45 picked from VLV-CLS · 45.0 s seal-in" : "K45 failed to seal in from VLV-CLS");
+        }
+      }
+    } else if (state.phase === "loading") {
+      state.speed = 100;
+      if (applyLossOfField(dt)) return;
+      updateValveOpening(dt);
+    } else if (state.phase === "running") {
+      state.speed = 100;
+      if (applyLossOfField(dt)) return;
+      updateRunningValve(dt);
+      if (state.phase === "tripped") return;
+      if (!fieldCanClose()) {
+        state.fieldContactor = false;
+        state.phase = "waiting-field";
+        state.speed = 96;
+      } else {
+        state.farPicked = true;
+        state.fieldContactor = true;
+      }
+    } else if (state.phase === "closing-valve") {
+      state.speed = 100;
+      if (applyLossOfField(dt)) return;
+      updateValveClosing(dt);
+    } else if (state.phase === "stopping" || state.phase === "tripped") {
+      const valveDt = dt * Number(el.timeScale.value);
+      const closeFloor = valveCloseFailureFloor();
+      state.valvePosition = Math.max(closeFloor, state.valvePosition - (100 / 45) * valveDt);
+      state.speed = Math.max(0, state.speed - 24 * dt);
+      if (state.speed === 0 && state.phase === "stopping") {
+        state.phase = "stopped";
+        el.speedSelect.disabled = false;
+      }
+    }
+  }
+
+  function stageText() {
+    if (state.phase === "loading") return "Positioning valve to " + Math.round(valvePositionCommand()) + "%";
+    const names = {
+      "stopped": "Stopped",
+      "accelerating": "Induction start",
+      "waiting-field": "Waiting for field",
+      "synchronizing": "Pulling into step",
+      "loading": "Positioning 36-inch valve",
+      "running": "Synchronous run",
+      "closing-valve": "Closing 36-inch valve",
+      "stopping": "Coasting down",
+      "tripped": "Tripped · relay latched"
+    };
+    return names[state.phase] || state.phase;
+  }
+
+  function blindDiagnostic() {
+    if (state.operatorMessage) return state.operatorMessage;
+    if (state.tripTargets.length) return "The motor relay has latched a trip target. Inspect its display, front LEDs, RTDs, valve limits, and field indications before choosing a diagnosis.";
+    if (state.startBlock) return "The start command was rejected. Trace the motor-relay start inhibit and process permissive indications.";
+    if (state.phase === "stopped") return "Hidden scenario armed. Use the cubicle controls and motor-relay indications to diagnose it.";
+    if (state.phase === "accelerating") return "52 is closed. The selected stator is accelerating the shared shaft.";
+    if (state.phase === "waiting-field") return "Speed has leveled below synchronism. Trace bus voltage, 52a, field DC, FAR position, 41 coil voltage, and 41 mechanical position.";
+    if (state.phase === "loading") return "The motor is synchronized and the valve sequence is active. Watch K45, actual position, the 30% run permissive, and both limit inputs.";
+    if (state.phase === "closing-valve") return "A normal stop is waiting for the valve closed-limit relay before opening 52.";
+    return "The selected motor is at synchronous speed. Inspect the motor-relay status, bearing RTDs, vibration channels, and process permissives.";
+  }
+
+  function diagnosticText() {
+    const s = suffix();
+    if (el.blind.checked) return blindDiagnostic();
+    if (state.operatorMessage) return state.operatorMessage;
+    if (state.tripTargets.length) {
+      const target = primaryTrip();
+      return "RELAY TRIP " + target.code + ": " + target.label + ". The cause must be cleared before RESET RELAY TRIPS will succeed.";
+    }
+    if (state.startBlock) return "START BLOCKED: VLV-CLS is not made. The motor relay will not close 52-" + s + ".";
+    if (state.valveCloseTimeout) return "NORMAL STOP is still active, but VLV-CLS has not made. The motor remains energized; EMERGENCY TRIP 52 is available.";
+    if (bearingAlarmActive()) {
+      const key = hottestBearing();
+      return "BEARING ALARM: " + bearingNames[key] + " is " + state.bearingTemps[key] + "°C. Alarm is 75°C; trip latches at 85°C.";
+    }
+    if (state.phase === "stopped") return "Ready. VLV-CLS permits START / CLOSE 52. A normal stop will close the valve before 52 opens.";
+    if (state.phase === "stopping") return "52-" + s + " and 41-" + s + " are open. The field is on discharge while the shaft coasts.";
+    if (state.phase === "accelerating") return "52-" + s + " is closed with the 36-inch valve shut. Damper windings accelerate the shaft while FAR-" + s + " watches slip frequency.";
+    if (fault() === "dc-loss") return "A1+ / A2− reads zero. FAR may operate, but 41-" + s + " and the selected rotor field cannot receive DC excitation.";
+    if (fault() === "52a-fail") return "52-" + s + " is physically closed, but 52a-" + s + " did not make. The field-application circuit is not armed.";
+    if (fault() === "far-fail") return "Speed reached the FAR pickup region, but FAR-" + s + " did not pick up. 41-" + s + " remains open.";
+    if (fault() === "41-coil-open") return "Full voltage appears across the open 41-" + s + " coil, but the field contactor cannot operate.";
+    if (fault() === "pickup-bypass-open") return "The 41-" + s + " pickup-bypass contact is open. Only reduced pickup voltage reaches the contactor.";
+    if (fault() === "mechanical-interlock") return "Full coil voltage reaches 41-" + s + ", but the high/low mechanical interlock blocks movement.";
+    if (state.phase === "waiting-field") return "52a-" + s + " and FAR-" + s + " are made. The 41-" + s + " pickup delay is in progress.";
+    if (state.phase === "synchronizing") return "41-" + s + " applied DC field. The rotor is pulling into step with the discharge valve still closed.";
+    if (state.phase === "loading") return "K45 was initiated by VLV-CLS and is sealing in the run circuit while the valve moves toward its " + Math.round(valvePositionCommand()) + "% command. Actual position must reach at least 30% before the 45-second interval expires.";
+    if (state.phase === "closing-valve") return "NORMAL STOP commanded the valve closed. The motor stays energized until VLV-CLS makes, then 52 opens.";
+    return "Healthy run: valve actual position is " + Math.round(state.valvePosition) + "% on a " + Math.round(valvePositionCommand()) + "% command, the ≥30% run permissive is made, and K45 " + (state.sealActive ? "is finishing its seal-in interval." : "has released.");
+  }
+
+  function relayScreenData() {
+    const s = suffix();
+    const hottest = hottestBearing();
+    const trip = primaryTrip();
+    const pages = [
+      {
+        title: "MOTOR STATUS",
+        labels: ["STATE", "BREAKER", "FIELD", "VALVE", "K45", "MESSAGE"],
+        values: [
+          stageText().toUpperCase(),
+          "52-" + s + (state.breakerClosed ? " CLOSED" : " OPEN"),
+          state.fieldContactor ? "41-" + s + " APPLIED" : "DISCHARGE",
+          Math.round(state.valvePosition) + "% · " + valveDisplayState(),
+          state.sealActive ? state.sealRemaining.toFixed(1) + " s REMAIN" : k45ArmedByClosedLimit() ? "ARMED BY VLV-CLS" : "OFF",
+          trip ? trip.code + " · " + trip.label : state.startBlock || (state.valveCloseTimeout ? "STOP SEQUENCE INCOMPLETE" : "READY")
+        ]
+      },
+      {
+        title: "RTD / VIBRATION",
+        labels: ["HOTTEST RTD", "SELECTED RTD", "RTD ALARM", "RTD TRIP", "MOTOR VIB · T=0.20", "PUMP VIB · T=0.20"],
+        values: [
+          bearingNames[hottest] + " · " + state.bearingTemps[hottest] + "°C",
+          bearingNames[el.bearingSelect.value] + " · " + state.bearingTemps[el.bearingSelect.value] + "°C",
+          "75°C",
+          "85°C · LATCHED",
+          motorVibration().toFixed(2) + " in/s RMS" + (motorVibration() >= vibrationTripSetpoint ? " · TRIP" : ""),
+          pumpVibration().toFixed(2) + " in/s RMS" + (pumpVibration() >= vibrationTripSetpoint ? " · TRIP" : "")
+        ]
+      },
+      {
+        title: "VALVE SEQUENCE",
+        labels: ["VLV-CLS INPUT", "K45 SEAL-IN", "RUN POS ≥30", "ACTUAL / COMMAND", "MOTOR HOLD", "MESSAGE"],
+        values: [
+          valveClosedLimit() ? "MADE" : "OPEN",
+          state.sealActive ? state.sealRemaining.toFixed(1) + " s" : "OFF",
+          valveRunPermissive() ? "MADE" : "OPEN",
+          Math.round(state.valvePosition) + "% / " + Math.round(valvePositionCommand()) + "% CMD",
+          state.phase === "closing-valve" ? "WAITING FOR VLV-CLS" : state.sealActive ? "K45 + POSITION" : valveRunPermissive() ? "POSITION PERMISSIVE" : "CLOSED PROOF",
+          state.valveCloseTimeout ? "CLOSE TIME EXPIRED" : state.tripTargets.length ? "TRIP LATCHED" : "SEQUENCE HEALTHY"
+        ]
+      },
+      {
+        title: "EVENT RECORD",
+        labels: ["EVENT 1", "EVENT 2", "EVENT 3", "EVENT 4", "EVENT 5", "CONTROL"],
+        values: [0, 1, 2, 3, 4].map((index) => {
+          const event = state.events[index];
+          return event ? event.time + " · " + event.message : "—";
+        }).concat(["ACK does not reset · RESET clears relay targets when inputs are normal"])
+      }
+    ];
+    return pages[state.screenPage % pages.length];
+  }
+
+  function render869() {
+    const alarm = bearingAlarmActive() || processAlarmActive();
+    const tripped = state.tripTargets.length > 0;
+    const bearingState = bearingTripActive() ? "red" : bearingAlarmActive() ? "amber" : "off";
+    const data = relayScreenData();
+
+    el.relay869.panel.dataset.state = tripped ? "trip" : alarm ? "alarm" : "normal";
+    el.relay869.panel.dataset.ack = state.acknowledged ? "true" : "false";
+    el.relay869.gcp.dataset.state = tripped ? "trip" : alarm ? "alarm" : "normal";
+    el.relay869.pageTitle.textContent = data.title;
+    el.relay869.clock.textContent = formatTime(state.simTime);
+    data.labels.forEach((label, index) => {
+      el.relay869.lineLabels[index].textContent = label;
+      el.relay869.lineValues[index].textContent = data.values[index];
+    });
+
+    setLed(el.relay869.leds.inservice, "green");
+    setLed(el.relay869.leds.pickup, state.farPicked ? "amber" : "off");
+    setLed(el.relay869.leds.alarm, alarm ? "amber" : "off");
+    setLed(el.relay869.leds.trip, tripped ? "red" : "off");
+    setLed(el.relay869.leds.breaker, state.breakerClosed ? "green" : "off");
+    setLed(el.relay869.leds.low, suffix() === "L" ? "green" : "off");
+    setLed(el.relay869.leds.high, suffix() === "H" ? "green" : "off");
+    setLed(el.relay869.leds.far, state.farPicked ? "amber" : "off");
+    setLed(el.relay869.leds.field, state.fieldContactor ? "green" : "off");
+    setLed(el.relay869.leds.valveClosed, valveClosedLimit() ? "green" : "off");
+    setLed(el.relay869.leds.valveOpen, valveOpenLimit() ? "green" : "off");
+    setLed(el.relay869.leds.k45, state.sealActive ? "amber" : "off");
+    setLed(el.relay869.leds.bearing, bearingState);
+    setLed(el.relay869.leds.vibration, vibrationTripActive() ? "red" : "green");
+
+    el.ack.disabled = !alarm && !tripped;
+    el.reset.disabled = !tripped;
+  }
+
+  function renderBearings() {
+    Object.keys(state.bearingTemps).forEach((key) => {
+      const temp = state.bearingTemps[key];
+      const level = bearingLevel(temp);
+      state.bearingLevels[key] = level;
+      el.bearings[key].temp.textContent = temp + "°C";
+      el.bearings[key].status.textContent = level === "trip" ? "TRIP LATCHED" : level.toUpperCase();
+      el.bearings[key].tile.dataset.state = level;
+      el.bearings[key].marker.dataset.state = level;
+      el.bearings[key].tile.setAttribute("aria-pressed", key === el.bearingSelect.value ? "true" : "false");
+      el.bearings[key].tile.setAttribute("aria-label", bearingNames[key] + ", " + temp + " degrees Celsius, " + level);
+    });
+    const selected = el.bearingSelect.value;
+    el.bearingTemp.value = state.bearingTemps[selected];
+    el.bearingTempValue.textContent = state.bearingTemps[selected] + "°C";
+    const motorVibrationState = motorVibration() >= vibrationTripSetpoint ? "trip" : "normal";
+    const pumpVibrationState = pumpVibration() >= vibrationTripSetpoint ? "trip" : "normal";
+    el.motorVibrationValue.textContent = motorVibration().toFixed(2) + " in/s RMS" + (motorVibrationState === "trip" ? " · TRIP" : "");
+    el.pumpVibrationValue.textContent = pumpVibration().toFixed(2) + " in/s RMS" + (pumpVibrationState === "trip" ? " · TRIP" : "");
+    el.motorVibrationControl.dataset.state = motorVibrationState;
+    el.pumpVibrationControl.dataset.state = pumpVibrationState;
+    el.motorVibrationMarker.dataset.state = motorVibrationState;
+    el.pumpVibrationMarker.dataset.state = pumpVibrationState;
+    el.motorVibration.setAttribute("aria-label", "Motor vibration " + motorVibration().toFixed(2) + " inches per second RMS, motor-relay trip at 0.20");
+    el.pumpVibration.setAttribute("aria-label", "Pump vibration " + pumpVibration().toFixed(2) + " inches per second RMS, motor-relay trip at 0.20");
+  }
+
+  function render() {
+    const s = suffix();
+    const activeFault = fault();
+    const bus = busAvailable();
+    const dc = dcAvailable();
+    const aux52a = contact52aClosed();
+    const moving = state.speed > 0.1;
+    const hp = selectedHp();
+    const current = currentPercent();
+    const pf = powerFactor();
+    const fieldCurrent = fieldCurrentPercent();
+    const tripped = state.tripTargets.length > 0;
+    const alarm = bearingAlarmActive() || processAlarmActive();
+    const fieldFaultList = ["dc-loss", "52a-fail", "far-fail", "41-coil-open", "pickup-bypass-open", "mechanical-interlock"];
+    const fieldBlocked = state.breakerClosed && state.speed >= 88 && !state.fieldContactor && fieldFaultList.includes(activeFault);
+    const closedLimit = valveClosedLimit();
+    const openLimit = valveOpenLimit();
+    const physicallyClosed = valvePhysicallyClosed();
+
+    el.mainLabel.textContent = "52-" + s + " / 52a-" + s;
+    el.farLabel.textContent = "FAR-" + s;
+    el.contact41Label.textContent = "41-" + s + " contactor";
+    el.coilLabel.textContent = "41-" + s + " coil";
+    el.stage.textContent = stageText();
+    el.speedValue.textContent = Math.round(state.speed) + "%";
+    el.hpValue.textContent = hp;
+    el.progress.value = state.speed;
+    el.progress.textContent = Math.round(state.speed) + "%";
+    el.dcValue.textContent = dc ? "125 VDC" : "0 VDC";
+    el.coilValue.textContent = coilReading();
+    el.currentValue.textContent = Math.round(current) + "% FLA";
+    el.pfValue.textContent = pf.label;
+    el.valveValue.textContent = valveDisplayState() + " · " + Math.round(state.valvePosition) + "%";
+    el.valveCommandValue.textContent = Math.round(valvePositionCommand()) + "%";
+    el.valveCommandStatus.textContent = Math.round(valvePositionCommand()) + "%" + (valvePositionCommand() === 30 ? " · MIN" : "");
+    el.sealValue.textContent = state.sealActive ? state.sealRemaining.toFixed(1) + " s" : k45ArmedByClosedLimit() ? "VLV-CLS ARMED" : "OFF";
+    el.latchValue.textContent = tripped ? primaryTrip().code + " LATCHED" : "CLEAR";
+    el.diagnostic.textContent = diagnosticText();
+
+    const rheostatSetting = Number(el.fieldRheostat.value);
+    el.rheostatValue.textContent = rheostatSetting < 40 ? "UNDEREXCITED" : rheostatSetting > 60 ? "OVEREXCITED" : "NORMAL";
+    root.style.setProperty("--pfs-rheostat-angle", (-55 + rheostatSetting * 1.1) + "deg");
+
+    setNode(el.nodes.supply, bus ? "ready" : "fault", bus ? "4.8 kV available" : "27P target · 0 kV");
+    setNode(el.nodes.permissives, tripped || state.startBlock ? "fault" : "active", tripped ? "Motor-relay trip latch set" : state.startBlock ? "Start inhibit" : "Motor relay healthy");
+    setNode(el.nodes.breaker, state.breakerClosed ? (aux52a ? "active" : "fault") : "inactive", state.breakerClosed ? (aux52a ? "52 closed · 52a closed" : "52 closed · 52a open") : "52 open");
+    setNode(el.nodes.stator, state.breakerClosed ? "active" : "inactive", state.breakerClosed ? (state.speed < 99 ? "Selected stator accelerating" : "Selected stator running") : moving ? "Shaft coasting" : "De-energized");
+    setNode(el.nodes.dc, dc ? "ready" : "fault", dc ? "125 VDC" : "Unavailable");
+
+    let farState = "inactive";
+    let farValue = state.speed < 92 ? "Monitoring slip" : "Open";
+    if (state.farPicked) {
+      farState = "active";
+      farValue = "Picked up";
+    } else if (activeFault === "far-fail" && state.speed >= 92) {
+      farState = "fault";
+      farValue = "Failed to pick up";
+    } else if (state.speed >= 88 && state.breakerClosed) {
+      farState = "waiting";
+      farValue = "Near pickup region";
+    }
+    setNode(el.nodes.far, farState, farValue);
+
+    let contact41State = state.fieldContactor ? "field" : "inactive";
+    let contact41Value = state.fieldContactor ? "Closed" : "Open";
+    if (!state.fieldContactor && state.farPicked && ["dc-loss", "52a-fail", "41-coil-open", "pickup-bypass-open", "mechanical-interlock"].includes(activeFault)) {
+      contact41State = "fault";
+      contact41Value = activeFault === "mechanical-interlock" ? "Blocked" : activeFault === "pickup-bypass-open" ? "45 V pickup" : "Failed to close";
+    } else if (!state.fieldContactor && state.farPicked && fieldCanClose()) {
+      contact41State = "waiting";
+      contact41Value = "Pickup delay";
+    }
+    setNode(el.nodes.contact41, contact41State, contact41Value);
+    setNode(el.nodes.field, state.fieldContactor ? "field" : moving ? "waiting" : "inactive", state.fieldContactor ? "Selected field applied" : "Discharge resistor connected");
+    setNode(el.nodes.valveClosed, closedLimit ? "active" : state.startBlock ? "fault" : "inactive", closedLimit ? "Closed proof made" : "Closed proof open");
+    setNode(el.nodes.seal, state.sealActive ? "waiting" : activeFault === "sealin-fail" && state.phase === "loading" ? "fault" : "inactive", state.sealActive ? state.sealRemaining.toFixed(1) + " s remaining" : k45ArmedByClosedLimit() ? "Armed by VLV-CLS" : "Off");
+    setNode(el.nodes.valveOpen, valveRunPermissive() ? "active" : state.valveCloseTimeout || activeFault === "valve-fail-open" && state.valveTravelElapsed >= 45 ? "fault" : state.valvePosition > 0 ? "waiting" : "inactive", valveRunPermissive() ? "Run position made · " + Math.round(state.valvePosition) + "%" : state.valvePosition > 0 ? Math.round(state.valvePosition) + "% · need 30%" : "Run position not made");
+
+    el.equipment.starter.dataset.state = tripped ? "fault" : state.breakerClosed ? "active" : "ready";
+    el.equipment.mainState.textContent = "52-" + s + (state.breakerClosed ? " closed" : " open");
+    el.equipment.closingMagnet.dataset.state = state.breakerClosed ? "active" : "inactive";
+    el.equipment.tripOutput.dataset.state = tripped ? "fault" : "healthy";
+    el.equipment.tripOutput.querySelector("small").textContent = tripped ? "trip output asserted" : "output healthy";
+    el.equipment.latchStatus.dataset.state = tripped ? "fault" : "healthy";
+    el.equipment.latchStatus.querySelector("small").textContent = tripped ? primaryTrip().code + " latched" : "trip targets clear";
+    el.equipment.valveClosedInput.dataset.state = closedLimit ? "closed" : state.startBlock ? "fault" : "healthy";
+    el.equipment.valveClosedInput.querySelector("small").textContent = closedLimit ? "closed proof made" : "closed proof open";
+    el.equipment.aux52a.dataset.state = state.breakerClosed ? (aux52a ? "closed" : "fault") : "open";
+    el.equipment.aux52aLabel.textContent = "52a-" + s;
+    el.equipment.aux52a.querySelector("small").textContent = state.breakerClosed ? (aux52a ? "closed" : "failed open") : "open";
+
+    el.equipment.busMeter.style.setProperty("--pfs-needle", bus ? "34deg" : "-42deg");
+    el.equipment.busMeterReading.textContent = bus ? "4.8" : "0";
+    el.equipment.busMeter.setAttribute("aria-label", "Bus voltage " + (bus ? "4.8 kilovolts" : "zero kilovolts"));
+    el.equipment.ampMeter.style.setProperty("--pfs-needle", needle(current, 0, 600));
+    el.equipment.ampMeterReading.textContent = Math.round(current) + "%";
+    el.equipment.ampMeter.setAttribute("aria-label", "Stator current " + Math.round(current) + " percent full load amperes");
+    el.equipment.pfMeter.style.setProperty("--pfs-needle", (-42 + pf.position * 84).toFixed(1) + "deg");
+    el.equipment.pfMeterReading.textContent = pf.label;
+    el.equipment.pfMeter.setAttribute("aria-label", "Power factor " + pf.label);
+
+    el.equipment.lightReady.dataset.state = state.phase === "stopped" && bus && closedLimit && !tripped ? "on" : "off";
+    el.equipment.lightRun.dataset.state = state.breakerClosed ? "on" : "off";
+    el.equipment.lightField.dataset.state = state.fieldContactor ? "on" : "off";
+    el.equipment.lightTrip.dataset.state = tripped ? "on" : "off";
+
+    el.equipment.fieldCubicle.dataset.state = fieldBlocked || activeFault === "loss-field" && tripped ? "fault" : state.fieldContactor ? "active" : "ready";
+    el.equipment.fieldState.textContent = state.fieldContactor ? "41-" + s + " closed" : fieldBlocked ? "41-" + s + " blocked" : "Discharge connected";
+    el.equipment.dcMeter.style.setProperty("--pfs-needle", dc ? "34deg" : "-42deg");
+    el.equipment.dcMeterReading.textContent = dc ? "125" : "0";
+    el.equipment.dcMeter.setAttribute("aria-label", "Exciter voltage " + (dc ? "125 volts DC" : "zero volts DC"));
+    el.equipment.fieldMeter.style.setProperty("--pfs-needle", needle(fieldCurrent, 0, 150));
+    el.equipment.fieldMeterReading.textContent = Math.round(fieldCurrent) + "%";
+    el.equipment.fieldMeter.setAttribute("aria-label", "Field current " + Math.round(fieldCurrent) + " percent of modeled rated field current");
+
+    const channels = {
+      "L": { channel: el.equipment.channelL, far: el.equipment.farL, contact41: el.equipment.contact41L },
+      "H": { channel: el.equipment.channelH, far: el.equipment.farH, contact41: el.equipment.contact41H }
+    };
+    Object.keys(channels).forEach((key) => {
+      const selected = key === s;
+      const device = channels[key];
+      let channelState = selected ? "selected" : "locked";
+      if (selected && state.fieldContactor) channelState = "active";
+      else if (selected && fieldBlocked) channelState = "fault";
+      else if (selected && state.breakerClosed) channelState = "waiting";
+      device.channel.dataset.state = channelState;
+      device.far.dataset.state = selected && state.farPicked ? "picked" : selected && activeFault === "far-fail" && state.speed >= 92 ? "fault" : "idle";
+      device.contact41.dataset.state = selected && state.fieldContactor ? "closed" : selected && fieldBlocked ? "fault" : "open";
+    });
+
+    const interlockFault = activeFault === "mechanical-interlock" && state.farPicked;
+    el.equipment.interlock.dataset.state = interlockFault ? "fault" : "healthy";
+    el.equipment.interlock.setAttribute("aria-label", "High low mechanical interlock " + (interlockFault ? "blocked" : "healthy"));
+    el.equipment.dischargeBank.dataset.state = state.fieldContactor ? "isolated" : "connected";
+
+    let machineState = "inactive";
+    if (tripped) machineState = "fault";
+    else if (state.fieldContactor) machineState = "field";
+    else if (state.breakerClosed || moving) machineState = "active";
+    el.equipment.machine.dataset.state = machineState;
+    el.equipment.machine.dataset.field = state.fieldContactor ? "on" : "off";
+    el.equipment.machine.dataset.selected = s;
+    el.equipment.machineHp.textContent = hp + " " + (s === "L" ? "low-speed circuit selected" : "high-speed circuit selected");
+    el.equipment.rotorFieldState.textContent = state.fieldContactor ? s + " field applied · other on discharge" : "Both on discharge";
+    el.equipment.valveProofState.textContent = closedLimit ? "CLOSED PROOF MADE" : physicallyClosed ? "CLOSED POSITION · PROOF FAILED" : openLimit ? "OPEN PROOF MADE" : valveRunPermissive() ? "RUN POSITION ≥30% MADE" : "VALVE TRAVEL · BELOW 30%";
+    el.equipment.valveShape.dataset.state = physicallyClosed ? "closed" : openLimit ? "open" : "moving";
+    el.equipment.valvePlug.setAttribute("transform", "rotate(" + (90 - state.valvePosition * 0.9).toFixed(1) + " 655 91)");
+    el.equipment.valveSvgValue.textContent = valveDisplayState() + " · " + Math.round(state.valvePosition) + "%";
+    el.equipment.valveClosedLamp.dataset.state = closedLimit ? "on" : "off";
+    el.equipment.valveOpenLamp.dataset.state = openLimit ? "on" : "off";
+
+    if (state.phase === "running") {
+      el.equipment.pumpStatus.textContent = "Pump running · valve " + Math.round(state.valvePosition) + "% actual / " + Math.round(valvePositionCommand()) + "% command · ≥30% permissive made · K45 " + (state.sealActive ? state.sealRemaining.toFixed(1) + " s remain" : "released");
+    } else if (state.phase === "loading") {
+      el.equipment.pumpStatus.textContent = "Motor synchronized · K45 initiated by VLV-CLS · valve moving to " + Math.round(valvePositionCommand()) + "% command · " + state.sealRemaining.toFixed(1) + " seconds remain";
+    } else if (state.phase === "closing-valve") {
+      el.equipment.pumpStatus.textContent = "Normal stop · motor remains energized until VLV-CLS makes · valve " + Math.round(state.valvePosition) + "% open";
+    } else if (state.phase === "accelerating" || state.phase === "waiting-field" || state.phase === "synchronizing") {
+      el.equipment.pumpStatus.textContent = "Common shaft accelerating with the 36-inch discharge valve closed";
+    } else if (state.phase === "stopping" || moving) {
+      el.equipment.pumpStatus.textContent = "52 open · common shaft coasting · valve commanded closed";
+    } else if (tripped) {
+      el.equipment.pumpStatus.textContent = "Motor-relay trip latched · 52 and field open · valve commanded closed";
+    } else {
+      el.equipment.pumpStatus.textContent = "Pump stopped · VLV-CLS start permissive " + (closedLimit ? "made" : "not made");
+    }
+
+    el.equipment.machine.setAttribute(
+      "aria-label",
+      hp + " selected, shaft speed " + Math.round(state.speed) + " percent, valve " + Math.round(state.valvePosition) + " percent actual on a " + Math.round(valvePositionCommand()) + " percent command, " + (tripped ? "trip latched" : "no trip latched")
+    );
+
+    renderBearings();
+    render869();
+
+    el.faultSelect.disabled = el.blind.checked;
+    el.newScenario.disabled = !el.blind.checked;
+    el.start.disabled = state.phase !== "stopped" || tripped;
+    el.stop.disabled = state.phase === "stopped" || state.phase === "stopping" || state.phase === "tripped";
+    el.emergencyTrip.disabled = !state.breakerClosed;
+  }
+
+  function newHiddenScenario() {
+    el.blind.checked = true;
+    const previous = state.hiddenFault;
+    const choices = hiddenFaultPool.filter((item) => item !== previous);
+    state.hiddenFault = choices[Math.floor(Math.random() * choices.length)];
+    el.diagnosis.value = "";
+    el.diagnosisResult.textContent = "Scenario armed.";
+    resetMachineState(true);
+    logEvent("Hidden troubleshooting scenario armed");
+    render();
+  }
+
+  function clearInjectedCondition() {
+    if (el.blind.checked) state.hiddenFault = "none";
+    else el.faultSelect.value = "none";
+    state.startBlock = "";
+    state.valveCloseTimeout = false;
+    state.operatorMessage = "Injected condition cleared. Any motor-relay trip target remains latched until RESET RELAY TRIPS.";
+    logEvent("Injected condition cleared");
+    render();
+  }
+
+  function checkDiagnosis() {
+    if (!el.diagnosis.value) {
+      el.diagnosisResult.textContent = "Choose a diagnosis first.";
+      return;
+    }
+    if (!el.blind.checked && fault() === "none") {
+      el.diagnosisResult.textContent = "No guided condition is injected.";
+      return;
+    }
+    if (el.diagnosis.value === fault()) {
+      el.diagnosisResult.textContent = "Correct: " + faultNames[fault()] + ".";
+    } else {
+      el.diagnosisResult.textContent = "Not yet. Compare the motor-relay target, valve limits, meters, and field devices again.";
+    }
+  }
+
+  function selectBearing(key) {
+    el.bearingSelect.value = key;
+    el.bearingTemp.value = state.bearingTemps[key];
+    state.operatorMessage = "";
+    render();
+  }
+
+  function setBearingTemperature(key, temperature) {
+    const previousLevel = bearingLevel(state.bearingTemps[key]);
+    const nextLevel = bearingLevel(temperature);
+    state.bearingTemps[key] = temperature;
+    if (nextLevel !== previousLevel) {
+      state.acknowledged = false;
+      logEvent(bearingNames[key] + " RTD " + nextLevel.toUpperCase() + " · " + temperature + "°C");
+    }
+    if (temperature >= 85) {
+      latch869Trip("38-" + key.toUpperCase(), bearingNames[key] + " RTD " + temperature + "°C");
+    } else if (temperature >= 75) {
+      state.operatorMessage = "MOTOR-RELAY BEARING ALARM: " + bearingNames[key] + " is " + temperature + "°C. Trip will latch at 85°C.";
+    } else if (state.operatorMessage.includes("BEARING ALARM")) {
+      state.operatorMessage = "Bearing input returned below 75°C. Any prior trip remains latched until RELAY RESET.";
+    }
+    render();
+  }
+
+  function setVibration(channel) {
+    const isMotor = channel === "motor";
+    const value = isMotor ? motorVibration() : pumpVibration();
+    const code = isMotor ? "VIB-MTR" : "VIB-PMP";
+    const label = isMotor ? "Motor vibration" : "Pump vibration";
+    if (value >= vibrationTripSetpoint) {
+      latch869Trip(code, label + " " + value.toFixed(2) + " in/s RMS");
+    } else if (state.tripTargets.some((target) => target.code === code)) {
+      state.operatorMessage = label + " input is now below 0.20 in/s RMS. The motor-relay target remains latched until RESET RELAY TRIPS.";
+    } else {
+      state.operatorMessage = label + " input " + value.toFixed(2) + " in/s RMS · trip setpoint 0.20 in/s RMS.";
+    }
+    render();
+  }
+
+  function changeScreen(delta) {
+    state.screenPage = (state.screenPage + delta + 4) % 4;
+    render();
+  }
+
+  function frame(now) {
+    const dt = Math.min(0.25, Math.max(0, (now - state.lastTime) / 1000));
+    state.lastTime = now;
+    updateSimulation(dt);
+    render();
+    requestAnimationFrame(frame);
+  }
+
+  el.start.addEventListener("click", start);
+  el.stop.addEventListener("click", normalStop);
+  el.emergencyTrip.addEventListener("click", emergencyTrip);
+  el.ack.addEventListener("click", acknowledge);
+  el.reset.addEventListener("click", resetTrips);
+  el.screen.addEventListener("click", () => changeScreen(1));
+  el.screenNav.forEach((button) => {
+    button.addEventListener("click", () => changeScreen(Number(button.dataset.screenNav)));
+  });
+  el.speedSelect.addEventListener("change", () => {
+    state.operatorMessage = "";
+    render();
+  });
+  el.faultSelect.addEventListener("change", () => {
+    state.operatorMessage = "";
+    state.startBlock = "";
+    el.diagnosisResult.textContent = "";
+    render();
+  });
+  el.fieldRheostat.addEventListener("input", render);
+  el.valveCommand.addEventListener("input", render);
+  el.valveCommand.addEventListener("change", () => {
+    state.operatorMessage = "VALVE POSITION COMMAND: " + Math.round(valvePositionCommand()) + "%. Running adjustment is limited to 30–100%; NORMAL STOP still closes the valve to 0%.";
+    logEvent("Valve position command · " + Math.round(valvePositionCommand()) + "%");
+    render();
+  });
+  el.timeScale.addEventListener("change", render);
+  el.blind.addEventListener("change", () => {
+    if (el.blind.checked) newHiddenScenario();
+    else {
+      el.diagnosisResult.textContent = "";
+      resetMachineState(true);
+      logEvent("Guided troubleshooting mode selected");
+      render();
+    }
+  });
+  el.newScenario.addEventListener("click", newHiddenScenario);
+  el.clearCondition.addEventListener("click", clearInjectedCondition);
+  el.checkDiagnosis.addEventListener("click", checkDiagnosis);
+  el.bearingSelect.addEventListener("change", () => selectBearing(el.bearingSelect.value));
+  el.bearingTemp.addEventListener("input", () => {
+    setBearingTemperature(el.bearingSelect.value, Number(el.bearingTemp.value));
+  });
+  el.bearingTiles.forEach((tile) => {
+    tile.addEventListener("click", () => selectBearing(tile.dataset.bearing));
+  });
+  el.motorVibration.addEventListener("input", () => setVibration("motor"));
+  el.pumpVibration.addEventListener("input", () => setVibration("pump"));
+
+  logEvent("Motor relay in service · simulator ready");
+  render();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
