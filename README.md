@@ -1,6 +1,6 @@
 
 <p align="center">
-  <img src="docs/images/banner.jpeg" alt="PowerTrain XR Banner" width="100%">
+  <img src="docs/images/banner.jpg" alt="PowerTrain XR Banner" width="100%">
 </p>
 
 <h1 align="center">PowerTrain XR</h1>
