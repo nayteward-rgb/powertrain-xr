@@ -1,10 +1,50 @@
-# PowerTrain XR
 
-### Industrial Motor Training Digital Twin
+<p align="center">
+  <img src="docs/images/banner.jpeg" alt="PowerTrain XR Banner" width="100%">
+</p>
 
-PowerTrain XR is a browser-based, WebXR-ready training simulator for medium-voltage synchronous motor systems. It gives electricians, operators, and technical learners a safe place to practice switching, motor starting, excitation, protective relaying, remote breaker racking, fault response, and lockout/tagout without touching energized equipment.
+<h1 align="center">PowerTrain XR</h1>
 
-**Live demo:** https://synchronous-pump-trainer.nayteward.chatgpt.site
+<h3 align="center">
+AI-Powered Digital Twin Training for Critical Infrastructure
+</h3>
+
+<p align="center">
+<b>Train the impossible. Master the critical.</b>
+</p>
+
+<p align="center">
+
+![Prototype](https://img.shields.io/badge/Status-Prototype-blue)
+![React](https://img.shields.io/badge/React-19-61DAFB)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
+![WebXR](https://img.shields.io/badge/WebXR-Ready-success)
+![License](https://img.shields.io/badge/License-MIT-green)
+
+</p>
+
+---
+
+## Mission
+
+PowerTrain XR is an AI-powered digital twin training platform designed to help electricians, operators, technicians, and engineers safely learn mission-critical electrical systems before working on live infrastructure.
+
+The current prototype demonstrates the platform using a browser-based synchronous motor pumping station. The long-term vision is a modular training ecosystem supporting water utilities, hospitals, manufacturing facilities, electrical substations, and data centers.
+![Prototype](https://img.shields.io/badge/Status-Prototype-blue)
+![React](https://img.shields.io/badge/React-19-61DAFB)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
+![WebXR](https://img.shields.io/badge/WebXR-Ready-success)
+![License](https://img.shields.io/badge/License-MIT-green)
+
+</p>
+
+---
+
+## Mission
+
+PowerTrain XR is an AI-powered digital twin training platform designed to help electricians, operators, technicians, and engineers safely learn mission-critical electrical systems before working on live infrastructure.
+
+The current prototype demonstrates the platform using a browser-based synchronous motor pumping station. The long-term vision is a modular training ecosystem supporting water utilities, hospitals, manufacturing facilities, electrical substations, and data centers.
 
 ## Why it exists
 
