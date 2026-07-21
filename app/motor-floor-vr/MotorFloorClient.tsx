@@ -2649,6 +2649,12 @@ export default function MotorFloorVRPage() {
     const keys = new Set<string>();
     let yaw = -0.28;
     let pitch = -0.08;
+    let targetYaw = yaw;
+    let targetPitch = pitch;
+    let cinematicMode = false;
+    let walkSpeed = 3.4;
+    let lookSensitivity = 1;
+    const walkVelocity = new THREE.Vector3();
     let pointerDown = false;
     let pointerMoved = false;
     let lastX = 0;
@@ -2696,8 +2702,8 @@ export default function MotorFloorVRPage() {
         const dx = event.clientX - lastX;
         const dy = event.clientY - lastY;
         if (Math.abs(dx) + Math.abs(dy) > 2) pointerMoved = true;
-        yaw -= dx * 0.004;
-        pitch = THREE.MathUtils.clamp(pitch - dy * 0.0035, -1.15, 1.0);
+        targetYaw -= dx * 0.004 * lookSensitivity;
+        targetPitch = THREE.MathUtils.clamp(targetPitch - dy * 0.0035 * lookSensitivity, -1.15, 1.0);
         lastX = event.clientX;
         lastY = event.clientY;
       }
@@ -2714,7 +2720,16 @@ export default function MotorFloorVRPage() {
       renderer.domElement.releasePointerCapture(event.pointerId);
       if (!pointerMoved) activateObject(desktopRay(event)[0]?.object ?? null);
     };
-    const onKeyDown = (event: KeyboardEvent) => keys.add(event.key.toLowerCase());
+    const onKeyDown = (event: KeyboardEvent) => {
+      const key = event.key.toLowerCase();
+      keys.add(key);
+      if (event.repeat) return;
+      if (key === "c") cinematicMode = !cinematicMode;
+      if (key === "[") walkSpeed = THREE.MathUtils.clamp(walkSpeed - 0.4, 1.4, 6.2);
+      if (key === "]") walkSpeed = THREE.MathUtils.clamp(walkSpeed + 0.4, 1.4, 6.2);
+      if (key === ",") lookSensitivity = THREE.MathUtils.clamp(lookSensitivity - 0.1, 0.4, 1.8);
+      if (key === ".") lookSensitivity = THREE.MathUtils.clamp(lookSensitivity + 0.1, 0.4, 1.8);
+    };
     const onKeyUp = (event: KeyboardEvent) => keys.delete(event.key.toLowerCase());
     renderer.domElement.addEventListener("pointerdown", onPointerDown);
     renderer.domElement.addEventListener("pointermove", onPointerMove);
@@ -2759,6 +2774,9 @@ export default function MotorFloorVRPage() {
     renderer.setAnimationLoop(() => {
       const delta = Math.min(clock.getDelta(), 0.05);
       if (!renderer.xr.isPresenting) {
+        const lookDamping = cinematicMode ? 6 : 12;
+        yaw = THREE.MathUtils.damp(yaw, targetYaw, lookDamping, delta);
+        pitch = THREE.MathUtils.damp(pitch, targetPitch, lookDamping, delta);
         camera.rotation.set(pitch, yaw, 0);
         const forward = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
         const right = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
@@ -2767,12 +2785,18 @@ export default function MotorFloorVRPage() {
         if (keys.has("s") || keys.has("arrowdown") || mobileMovementRef.current.back) move.sub(forward);
         if (keys.has("d") || keys.has("arrowright") || mobileMovementRef.current.right) move.add(right);
         if (keys.has("a") || keys.has("arrowleft") || mobileMovementRef.current.left) move.sub(right);
-        if (move.lengthSq() > 0) {
-          move.normalize().multiplyScalar(delta * (keys.has("shift") ? 7 : 3.4));
-          rig.position.add(move);
-          rig.position.x = THREE.MathUtils.clamp(rig.position.x, -18, 18);
-          rig.position.z = THREE.MathUtils.clamp(rig.position.z, -12.5, 13);
-        }
+        const speed = walkSpeed * (keys.has("shift") ? 1.8 : 1) * (cinematicMode ? 0.62 : 1);
+        if (move.lengthSq() > 0) move.normalize().multiplyScalar(speed);
+        const movementDamping = move.lengthSq() > 0 ? (cinematicMode ? 3.6 : 7.5) : (cinematicMode ? 4.5 : 10);
+        walkVelocity.x = THREE.MathUtils.damp(walkVelocity.x, move.x, movementDamping, delta);
+        walkVelocity.z = THREE.MathUtils.damp(walkVelocity.z, move.z, movementDamping, delta);
+        rig.position.addScaledVector(walkVelocity, delta);
+        const clampedX = THREE.MathUtils.clamp(rig.position.x, -18, 18);
+        const clampedZ = THREE.MathUtils.clamp(rig.position.z, -12.5, 13);
+        if (clampedX !== rig.position.x) walkVelocity.x = 0;
+        if (clampedZ !== rig.position.z) walkVelocity.z = 0;
+        rig.position.x = clampedX;
+        rig.position.z = clampedZ;
       }
       breakerDoorPivots.forEach((pivot) => {
         const target = Number(pivot.userData.targetRotation ?? 0);
